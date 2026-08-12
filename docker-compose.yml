@@ -1,0 +1,51 @@
+services:
+  # PostgreSQL Database Container
+  db:
+    image: postgres:16-alpine
+    container_name: controlevendas_db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: controlevendas
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d controlevendas"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Node.js Express Backend API Container
+  backend:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: controlevendas_backend
+    restart: always
+    ports:
+      - "3001:3001"
+    environment:
+      PORT: 3001
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/controlevendas
+      JWT_SECRET: super_secret_vendas_jwt_key_2026
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # React Vite Frontend Container
+  frontend:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: controlevendas_frontend
+    restart: always
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:

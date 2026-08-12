@@ -1,0 +1,66 @@
+const { z } = require('zod');
+
+// 1. Auth Schemas
+const loginSchema = z.object({
+  phone: z.string().trim().min(8, 'Telefone inválido'),
+  password: z.string().min(4, 'Senha deve ter no mínimo 4 caracteres')
+});
+
+// 2. Customer Schemas
+const customerSchema = z.object({
+  name: z.string().trim().min(2, 'Nome deve ter no mínimo 2 caracteres').max(255),
+  phone: z.string().trim().optional().nullable(),
+  cep: z.string().trim().optional().nullable(),
+  address: z.string().trim().optional().nullable(),
+  number: z.string().trim().optional().nullable(),
+  complement: z.string().trim().optional().nullable(),
+  neighborhood: z.string().trim().optional().nullable(),
+  city: z.string().trim().optional().nullable(),
+  state: z.string().trim().optional().nullable(),
+  notes: z.string().trim().optional().nullable()
+});
+
+// 3. Sale Schemas
+const saleSchema = z.object({
+  customer_id: z.number().int().positive('Cliente inválido'),
+  product_name: z.string().trim().min(2, 'Nome do produto obrigatório'),
+  product_value: z.union([z.string(), z.number()]).transform(val => String(val)),
+  interest_value: z.union([z.string(), z.number()]).optional().transform(val => val ? String(val) : '0'),
+  interest_percent: z.number().nonnegative().optional().default(0),
+  late_fee_percent_per_day: z.number().nonnegative().optional().default(1.0),
+  payment_mode: z.enum(['DIARIA', 'QUINZENAL', 'MENSAL']),
+  installment_count: z.number().int().min(1, 'Quantidade de parcelas deve ser no mínimo 1').max(60),
+  first_due_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Data de vencimento inválida (AAAA-MM-DD)')
+});
+
+// 4. Payment Schemas
+const paymentSchema = z.object({
+  amount_paid: z.union([z.string(), z.number()]).transform(val => String(val)),
+  payment_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Data do pagamento inválida (AAAA-MM-DD)'),
+  notes: z.string().trim().optional().nullable()
+});
+
+// 5. Expense Schemas
+const expenseSchema = z.object({
+  category_name: z.string().trim().min(2, 'Categoria obrigatória'),
+  name: z.string().trim().min(2, 'Descrição da despesa obrigatória'),
+  amount: z.union([z.string(), z.number()]).transform(val => String(val)),
+  expense_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Data da despesa inválida (AAAA-MM-DD)'),
+  notes: z.string().trim().optional().nullable()
+});
+
+// 6. Super Admin Seller Creation Schema
+const createSellerSchema = z.object({
+  name: z.string().trim().min(2, 'Nome do vendedor obrigatório'),
+  phone: z.string().trim().min(8, 'Telefone obrigatório'),
+  password: z.string().min(6, 'Senha deve ter no mínimo 6 caracteres')
+});
+
+module.exports = {
+  loginSchema,
+  customerSchema,
+  saleSchema,
+  paymentSchema,
+  expenseSchema,
+  createSellerSchema
+};
