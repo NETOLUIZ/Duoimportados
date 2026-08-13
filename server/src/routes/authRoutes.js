@@ -51,12 +51,15 @@ router.post('/login', loginLimiter, async (req, res) => {
       { expiresIn: '7d' }
     );
 
-    // Set Secure HttpOnly Cookie
+    // Set Secure HttpOnly Cookie with Wildcard Domain Support
     const isProduction = process.env.NODE_ENV === 'production';
+    const cookieDomain = process.env.COOKIE_DOMAIN || (isProduction ? '.duoimportados.com.br' : undefined);
+    
     res.cookie('auth_token', token, {
       httpOnly: true,
       secure: isProduction,
       sameSite: 'lax',
+      ...(cookieDomain ? { domain: cookieDomain } : {}),
       maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
     });
 
@@ -88,9 +91,13 @@ router.post('/logout', (req, res) => {
     } catch (e) {}
   }
   
+  const isProduction = process.env.NODE_ENV === 'production';
+  const cookieDomain = process.env.COOKIE_DOMAIN || (isProduction ? '.duoimportados.com.br' : undefined);
+
   res.clearCookie('auth_token', {
     httpOnly: true,
-    sameSite: 'lax'
+    sameSite: 'lax',
+    ...(cookieDomain ? { domain: cookieDomain } : {})
   });
 
   return res.json({ message: 'Logout realizado com sucesso.' });
@@ -102,7 +109,9 @@ router.get('/me', verifyAuth, async (req, res) => {
     const user = await queryOne('SELECT id, name, phone, role, status, created_at FROM users WHERE id = ?', [req.user.userId]);
 
     if (!user || user.status === 'BLOCKED') {
-      res.clearCookie('auth_token');
+      res.clearCookie('auth_token', {
+        ...(cookieDomain ? { domain: cookieDomain } : {})
+      });
       return res.status(401).json({ error: 'Sessão inválida ou conta bloqueada.' });
     }
 
