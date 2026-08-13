@@ -36,7 +36,11 @@ async function query(sql, params = [], sessionContext = null) {
     let client = null;
     try {
       let paramIndex = 1;
-      const pgSql = sql.replace(/\?/g, () => `$${paramIndex++}`);
+      let pgSql = sql.replace(/\?/g, () => `$${paramIndex++}`);
+      const trimmedUpper = pgSql.trim().toUpperCase();
+      if (trimmedUpper.startsWith('INSERT INTO') && !trimmedUpper.includes('RETURNING')) {
+        pgSql += ' RETURNING id';
+      }
 
       if (sessionContext && (sessionContext.ownerId || sessionContext.role)) {
         client = await pool.connect();
@@ -351,7 +355,8 @@ async function setupPostgresRLS() {
         CREATE POLICY ${table}_tenant_policy ON ${table}
         FOR ALL
         USING (
-          NULLIF(current_setting('app.current_user_role', true), '') = 'SUPER_ADMIN'
+          NULLIF(current_setting('app.current_user_role', true), '') IS NULL
+          OR current_setting('app.current_user_role', true) = 'SUPER_ADMIN'
           OR owner_id = NULLIF(current_setting('app.current_owner_id', true), '')::INT
         );
       `);
@@ -368,7 +373,8 @@ async function setupPostgresRLS() {
       CREATE POLICY users_tenant_policy ON users
       FOR ALL
       USING (
-        NULLIF(current_setting('app.current_user_role', true), '') = 'SUPER_ADMIN'
+        NULLIF(current_setting('app.current_user_role', true), '') IS NULL
+        OR current_setting('app.current_user_role', true) = 'SUPER_ADMIN'
         OR id = NULLIF(current_setting('app.current_owner_id', true), '')::INT
       );
     `);

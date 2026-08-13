@@ -147,7 +147,7 @@ router.put('/sellers/:id/status', async (req, res) => {
       return res.status(400).json({ error: 'Status inválido. Use ACTIVE ou BLOCKED.' });
     }
 
-    const seller = await queryOne('SELECT id, name FROM users WHERE id = ? AND role = "SELLER"', [sellerId]);
+    const seller = await queryOne("SELECT id, name FROM users WHERE id = ? AND role = 'SELLER'", [sellerId]);
     if (!seller) {
       return res.status(404).json({ error: 'Vendedor não encontrado.' });
     }
@@ -178,7 +178,7 @@ router.put('/sellers/:id/reset-password', async (req, res) => {
       return res.status(400).json({ error: 'A nova senha deve ter no mínimo 6 caracteres.' });
     }
 
-    const seller = await queryOne('SELECT id FROM users WHERE id = ? AND role = "SELLER"', [sellerId]);
+    const seller = await queryOne("SELECT id FROM users WHERE id = ? AND role = 'SELLER'", [sellerId]);
     if (!seller) {
       return res.status(404).json({ error: 'Vendedor não encontrado.' });
     }
