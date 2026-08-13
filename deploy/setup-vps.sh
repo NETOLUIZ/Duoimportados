@@ -17,9 +17,11 @@ sudo systemctl reload nginx
 # 3. Gerar Certificado SSL Grátis (HTTPS)
 sudo certbot --nginx -d duoimportados.com.br -d www.duoimportados.com.br --non-interactive --agree-tos -m admin@duoimportados.com.br || true
 
-# 4. Garantir que as portas no SSL fiquem corretas (3088 frontend / 3011 backend)
-sudo sed -i 's/3008/3088/g' /etc/nginx/sites-available/duoimportados
-sudo sed -i 's/3001/3011/g' /etc/nginx/sites-available/duoimportados
+# 4. Garantir que as portas no SSL fiquem corretas (3098 frontend / 3095 backend)
+sudo sed -i 's/3008/3098/g' /etc/nginx/sites-available/duoimportados
+sudo sed -i 's/3088/3098/g' /etc/nginx/sites-available/duoimportados
+sudo sed -i 's/3001/3095/g' /etc/nginx/sites-available/duoimportados
+sudo sed -i 's/3011/3095/g' /etc/nginx/sites-available/duoimportados
 sudo nginx -t
 sudo systemctl reload nginx
 
