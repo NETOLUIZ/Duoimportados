@@ -34,13 +34,17 @@ const allowedOrigins = [
   'http://localhost:3000',
   'http://127.0.0.1:3000',
   'http://localhost:3001',
-  'http://127.0.0.1:3001'
+  'http://127.0.0.1:3001',
+  'https://duoimportados.com.br',
+  'https://www.duoimportados.com.br',
+  'http://duoimportados.com.br',
+  'http://www.duoimportados.com.br'
 ];
 
 app.use(
   cors({
     origin: function (origin, callback) {
-      if (!origin || allowedOrigins.includes(origin)) {
+      if (!origin || allowedOrigins.includes(origin) || origin.includes('duoimportados.com.br')) {
         callback(null, true);
       } else {
         callback(new Error('Bloqueado por política CORS'));
