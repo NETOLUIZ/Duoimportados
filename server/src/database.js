@@ -219,6 +219,7 @@ async function initDatabase() {
       sale_date DATE NOT NULL,
       product_value ${numericType} NOT NULL,
       interest_value ${numericType} DEFAULT 0.00,
+      interest_percent ${numericType} DEFAULT 0.00,
       total_value ${numericType} NOT NULL,
       payment_mode VARCHAR(50) NOT NULL,
       installment_count INT NOT NULL,
@@ -229,6 +230,13 @@ async function initDatabase() {
       FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
     )
   `);
+
+  // Migration: add interest_percent to pre-existing sales tables that predate this column
+  try {
+    await query(`ALTER TABLE sales ADD COLUMN interest_percent ${numericType} DEFAULT 0.00`);
+  } catch (err) {
+    // Column already exists — safe to ignore
+  }
 
   // 5. Installments table
   await query(`
@@ -260,6 +268,7 @@ async function initDatabase() {
       customer_id INT NOT NULL,
       amount_paid ${numericType} NOT NULL,
       payment_date DATE NOT NULL,
+      payment_type VARCHAR(20) NOT NULL DEFAULT 'FULL',
       registered_by_user_id INT NOT NULL,
       notes TEXT,
       created_at TIMESTAMP DEFAULT ${timestampDefault},
@@ -268,6 +277,13 @@ async function initDatabase() {
       FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
     )
   `);
+
+  // Migration: add payment_type to pre-existing payments tables that predate this column
+  try {
+    await query(`ALTER TABLE payments ADD COLUMN payment_type VARCHAR(20) NOT NULL DEFAULT 'FULL'`);
+  } catch (err) {
+    // Column already exists — safe to ignore
+  }
 
   // 7. Expense Categories table
   await query(`

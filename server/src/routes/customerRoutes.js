@@ -5,6 +5,7 @@ const { verifyAuth } = require('../middleware/authMiddleware');
 const { sanitizeBody } = require('../middleware/securityMiddleware');
 const { customerSchema } = require('../utils/validationSchemas');
 const { logSecurityEvent } = require('../utils/logger');
+const { parseToCents, centsToDecimalString } = require('../utils/financialMath');
 
 // All customer routes require authentication and sanitize body
 router.use(verifyAuth);
@@ -88,11 +89,27 @@ router.get('/:id', async (req, res) => {
       [customerId, ownerId]
     );
 
+    // Aggregate financial summary across all sales to this customer
+    const summary = sales.reduce((acc, s) => {
+      acc.totalInvestedCents += parseToCents(s.product_value);
+      acc.totalInterestCents += parseToCents(s.interest_value);
+      acc.totalValueCents += parseToCents(s.total_value);
+      return acc;
+    }, { totalInvestedCents: 0, totalInterestCents: 0, totalValueCents: 0 });
+
+    const totalReceivedCents = payments.reduce((sum, p) => sum + parseToCents(p.amount_paid), 0);
+
     return res.json({
       customer,
       sales,
       installments,
-      payments
+      payments,
+      summary: {
+        total_invested: centsToDecimalString(summary.totalInvestedCents),
+        total_interest: centsToDecimalString(summary.totalInterestCents),
+        total_value: centsToDecimalString(summary.totalValueCents),
+        total_received: centsToDecimalString(totalReceivedCents)
+      }
     });
   } catch (err) {
     console.error('Error fetching customer details:', err);

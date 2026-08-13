@@ -22,6 +22,7 @@ export default function NewSaleModal({ isOpen, onClose, onSuccess }) {
   const [paymentMode, setPaymentMode] = useState('MENSAL'); // DIARIA, QUINZENAL, MENSAL
   const [installmentCount, setInstallmentCount] = useState('3');
   const [firstDueDate, setFirstDueDate] = useState('');
+  const [saleDate, setSaleDate] = useState('');
 
   useEffect(() => {
     if (isOpen) {
@@ -41,8 +42,27 @@ export default function NewSaleModal({ isOpen, onClose, onSuccess }) {
       const defaultDate = new Date();
       defaultDate.setUTCDate(defaultDate.getUTCDate() + 30);
       setFirstDueDate(defaultDate.toISOString().split('T')[0]);
+      setSaleDate(new Date().toISOString().split('T')[0]);
     }
   }, [isOpen]);
+
+  // Mirrors the backend's calculateDueDate logic, purely for the "Data Final" preview
+  function addPeriod(dateStr, periods, frequency) {
+    if (!dateStr || periods <= 0) return dateStr;
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const date = new Date(Date.UTC(y, m - 1, d));
+
+    if (frequency === 'DIARIA') {
+      date.setUTCDate(date.getUTCDate() + periods);
+    } else if (frequency === 'QUINZENAL') {
+      date.setUTCDate(date.getUTCDate() + periods * 15);
+    } else if (frequency === 'MENSAL') {
+      const originalDay = date.getUTCDate();
+      date.setUTCMonth(date.getUTCMonth() + periods);
+      if (date.getUTCDate() !== originalDay) date.setUTCDate(0);
+    }
+    return date.toISOString().split('T')[0];
+  }
 
   useEffect(() => {
     if (!isOpen) return;
@@ -65,6 +85,7 @@ export default function NewSaleModal({ isOpen, onClose, onSuccess }) {
   const totalVal = pVal + jVal;
   const count = parseInt(installmentCount) || 1;
   const installmentVal = count > 0 ? (totalVal / count) : 0;
+  const lastDueDate = addPeriod(firstDueDate, count - 1, paymentMode);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -94,7 +115,8 @@ export default function NewSaleModal({ isOpen, onClose, onSuccess }) {
         late_fee_percent_per_day: lFeeRate,
         payment_mode: paymentMode,
         installment_count: count,
-        first_due_date: firstDueDate
+        first_due_date: firstDueDate,
+        sale_date: saleDate
       });
 
       onSuccess();
@@ -281,20 +303,37 @@ export default function NewSaleModal({ isOpen, onClose, onSuccess }) {
             </div>
           </div>
 
-          {/* First Due Date */}
-          <div>
-            <label htmlFor="sale-due-date" className={labelClass}>
-              <Calendar className="w-4 h-4 text-amber-600" />
-              Data do 1º Vencimento *
-            </label>
-            <input
-              id="sale-due-date"
-              type="date"
-              value={firstDueDate}
-              onChange={(e) => setFirstDueDate(e.target.value)}
-              required
-              className={`${inputClass} font-semibold`}
-            />
+          {/* Sale Start Date & First Due Date */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="sale-date" className={labelClass}>
+                <Calendar className="w-4 h-4 text-brand-blue" />
+                Data Inicial (Venda) *
+              </label>
+              <input
+                id="sale-date"
+                type="date"
+                value={saleDate}
+                onChange={(e) => setSaleDate(e.target.value)}
+                required
+                className={`${inputClass} font-semibold`}
+              />
+            </div>
+
+            <div>
+              <label htmlFor="sale-due-date" className={labelClass}>
+                <Calendar className="w-4 h-4 text-amber-600" />
+                Data do 1º Vencimento *
+              </label>
+              <input
+                id="sale-due-date"
+                type="date"
+                value={firstDueDate}
+                onChange={(e) => setFirstDueDate(e.target.value)}
+                required
+                className={`${inputClass} font-semibold`}
+              />
+            </div>
           </div>
 
           {/* RESUMO PRÉ-CONFIRMAÇÃO */}
@@ -328,6 +367,10 @@ export default function NewSaleModal({ isOpen, onClose, onSuccess }) {
               <div>
                 <p className="text-slate-400 text-xs">Primeiro Vencimento:</p>
                 <p className="font-semibold text-slate-200">{formatDate(firstDueDate)}</p>
+              </div>
+              <div>
+                <p className="text-slate-400 text-xs">Data Final (Última Parcela):</p>
+                <p className="font-semibold text-slate-200">{formatDate(lastDueDate)}</p>
               </div>
             </div>
           </div>

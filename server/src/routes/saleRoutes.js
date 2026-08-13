@@ -85,6 +85,7 @@ router.post('/', async (req, res) => {
       product_name,
       product_value,
       interest_value,
+      interest_percent,
       late_fee_percent_per_day,
       payment_mode,
       installment_count,
@@ -114,12 +115,13 @@ router.post('/', async (req, res) => {
 
     const saleDateStr = sale_date || new Date().toISOString().split('T')[0];
     const lateFeeRateDecimal = parseFloat(late_fee_percent_per_day || 1.0).toFixed(2);
+    const interestPercentDecimal = parseFloat(interest_percent || 0).toFixed(2);
 
     // Insert Sale Record
     const saleResult = await query(
-      `INSERT INTO sales 
-       (owner_id, customer_id, product_name, sale_date, product_value, interest_value, total_value, payment_mode, installment_count, first_due_date, late_fee_percent_per_day)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO sales
+       (owner_id, customer_id, product_name, sale_date, product_value, interest_value, interest_percent, total_value, payment_mode, installment_count, first_due_date, late_fee_percent_per_day)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         ownerId,
         customer_id,
@@ -127,6 +129,7 @@ router.post('/', async (req, res) => {
         saleDateStr,
         productValDecimal,
         interestValDecimal,
+        interestPercentDecimal,
         totalValDecimal,
         payment_mode,
         installment_count,

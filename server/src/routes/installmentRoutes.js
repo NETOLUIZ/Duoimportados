@@ -4,7 +4,7 @@ const { query, queryOne } = require('../database');
 const { verifyAuth } = require('../middleware/authMiddleware');
 const { sanitizeBody } = require('../middleware/securityMiddleware');
 const { paymentSchema } = require('../utils/validationSchemas');
-const { parseToCents, centsToDecimalString, calculateDailyLateFee } = require('../utils/financialMath');
+const { parseToCents, centsToDecimalString, calculateDailyLateFee, calculateDueDate, parseLocalDate } = require('../utils/financialMath');
 const { logSecurityEvent } = require('../utils/logger');
 
 router.use(verifyAuth);
@@ -22,9 +22,9 @@ router.get('/', async (req, res) => {
     const in2DaysStr = dateIn2Days.toISOString().split('T')[0];
 
     let sql = `
-      SELECT i.*, 
+      SELECT i.*,
         c.name as customer_name, c.phone as customer_phone,
-        s.product_name, s.payment_mode, s.installment_count, s.late_fee_percent_per_day
+        s.product_name, s.payment_mode, s.installment_count, s.late_fee_percent_per_day, s.interest_percent, s.product_value
       FROM installments i
       JOIN customers c ON c.id = i.customer_id
       JOIN sales s ON s.id = i.sale_id
@@ -128,11 +128,11 @@ router.post('/:id/payment', async (req, res) => {
       return res.status(400).json({ error: parseResult.error.errors[0]?.message || 'Dados de pagamento inválidos.' });
     }
 
-    const { amount_paid, payment_date, notes } = parseResult.data;
+    const { amount_paid, payment_date, payment_type, notes } = parseResult.data;
 
     // Strict IDOR Check: Ensure installment belongs strictly to req.ownerId
     const installment = await queryOne(
-      `SELECT i.*, c.name as customer_name, s.product_name
+      `SELECT i.*, c.name as customer_name, s.product_name, s.payment_mode, s.interest_percent, s.product_value, s.installment_count
        FROM installments i
        JOIN customers c ON c.id = i.customer_id
        JOIN sales s ON s.id = i.sale_id
@@ -143,6 +143,66 @@ router.post('/:id/payment', async (req, res) => {
     if (!installment) {
       logSecurityEvent('UNAUTHORIZED_IDOR_PAYMENT_ATTEMPT', { userId: req.user.userId, installmentId, ip: req.ip });
       return res.status(404).json({ error: 'Parcela não encontrada ou não pertencente à sua conta.' });
+    }
+
+    const paymentDateStr = payment_date || new Date().toISOString().split('T')[0];
+
+    if (payment_type === 'INTEREST_ONLY') {
+      // Renewal payment: charge only the interest on THIS installment's share of the
+      // original principal (product_value / installment_count) — NOT on i.amount,
+      // which already has the sale's one-time interest baked in and would double-count it.
+      // Push the due date forward by one period, leaving the principal owed as-is.
+      const principalShareCents = installment.installment_count > 0
+        ? Math.round(parseToCents(installment.product_value) / installment.installment_count)
+        : parseToCents(installment.product_value);
+      const interestRate = parseFloat(installment.interest_percent || 0);
+      const interestCents = Math.round(principalShareCents * (interestRate / 100));
+
+      if (interestCents <= 0) {
+        return res.status(400).json({ error: 'Esta venda não possui percentual de juros configurado para renovação.' });
+      }
+
+      const interestDecimal = centsToDecimalString(interestCents);
+      const currentDueDate = parseLocalDate(installment.due_date);
+      const newDueDate = calculateDueDate(currentDueDate, 1, installment.payment_mode);
+
+      await query(
+        `INSERT INTO payments
+         (owner_id, installment_id, customer_id, amount_paid, payment_date, payment_type, registered_by_user_id, notes)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          ownerId,
+          installmentId,
+          installment.customer_id,
+          interestDecimal,
+          paymentDateStr,
+          'INTEREST_ONLY',
+          req.user.userId,
+          notes || `Pagamento somente dos juros (${interestRate}%) — parcela renovada para ${newDueDate}`
+        ]
+      );
+
+      await query(
+        `UPDATE installments SET due_date = ?, status = 'PENDENTE' WHERE id = ? AND owner_id = ?`,
+        [newDueDate, installmentId, ownerId]
+      );
+
+      logSecurityEvent('INSTALLMENT_RENEWED_INTEREST_ONLY', {
+        ownerId,
+        installmentId,
+        interestPaid: interestDecimal,
+        previousDueDate: installment.due_date,
+        newDueDate,
+        ip: req.ip
+      });
+
+      return res.json({
+        message: `Juros pago! Parcela renovada para ${newDueDate}.`,
+        installment_id: installmentId,
+        status: 'PENDENTE',
+        amount_paid: interestDecimal,
+        new_due_date: newDueDate
+      });
     }
 
     // Server-side Financial Cents Recalculation
@@ -167,19 +227,18 @@ router.post('/:id/payment', async (req, res) => {
       newStatus = installment.due_date < todayStr ? 'ATRASADA' : 'PENDENTE';
     }
 
-    const paymentDateStr = payment_date || new Date().toISOString().split('T')[0];
-
     // Insert Payment Record
     await query(
-      `INSERT INTO payments 
-       (owner_id, installment_id, customer_id, amount_paid, payment_date, registered_by_user_id, notes)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO payments
+       (owner_id, installment_id, customer_id, amount_paid, payment_date, payment_type, registered_by_user_id, notes)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         ownerId,
         installmentId,
         installment.customer_id,
         currentPaymentDecimal,
         paymentDateStr,
+        'FULL',
         req.user.userId,
         notes || 'Pagamento registrado'
       ]

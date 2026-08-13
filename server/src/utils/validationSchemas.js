@@ -32,14 +32,19 @@ const saleSchema = z.object({
   late_fee_percent_per_day: z.number().nonnegative().optional().default(1.0),
   payment_mode: z.enum(['DIARIA', 'QUINZENAL', 'MENSAL']),
   installment_count: z.number().int().min(1, 'Quantidade de parcelas deve ser no mínimo 1').max(60),
-  first_due_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Data de vencimento inválida (AAAA-MM-DD)')
+  first_due_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Data de vencimento inválida (AAAA-MM-DD)'),
+  sale_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Data da venda inválida (AAAA-MM-DD)').optional().nullable()
 });
 
 // 4. Payment Schemas
 const paymentSchema = z.object({
-  amount_paid: z.union([z.string(), z.number()]).transform(val => String(val)),
+  amount_paid: z.union([z.string(), z.number()]).optional().nullable().transform(val => (val === null || val === undefined ? undefined : String(val))),
   payment_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Data do pagamento inválida (AAAA-MM-DD)'),
+  payment_type: z.enum(['FULL', 'INTEREST_ONLY']).optional().default('FULL'),
   notes: z.string().trim().optional().nullable()
+}).refine((data) => data.payment_type === 'INTEREST_ONLY' || data.amount_paid !== undefined, {
+  message: 'Informe o valor do pagamento.',
+  path: ['amount_paid']
 });
 
 // 5. Expense Schemas
