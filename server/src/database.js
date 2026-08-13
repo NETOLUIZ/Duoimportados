@@ -124,9 +124,23 @@ async function initDatabase() {
       password_hash VARCHAR(255) NOT NULL,
       role VARCHAR(50) NOT NULL DEFAULT 'SELLER',
       status VARCHAR(50) NOT NULL DEFAULT 'ACTIVE',
+      subdomain VARCHAR(150),
       created_at TIMESTAMP DEFAULT ${timestampDefault}
     )
   `);
+
+  // Migration: add subdomain to pre-existing users tables that predate this column
+  try {
+    await query(`ALTER TABLE users ADD COLUMN subdomain VARCHAR(150)`);
+  } catch (err) {
+    // Column already exists — safe to ignore
+  }
+
+  try {
+    await query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_subdomain ON users(subdomain)`);
+  } catch (err) {
+    // Index already exists — safe to ignore
+  }
 
   // 2. Customers table
   await query(`
@@ -142,11 +156,19 @@ async function initDatabase() {
       neighborhood VARCHAR(100),
       city VARCHAR(100),
       state VARCHAR(50),
+      referred_by VARCHAR(255),
       notes TEXT,
       created_at TIMESTAMP DEFAULT ${timestampDefault},
       FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE CASCADE
     )
   `);
+
+  // Migration: add referred_by to pre-existing customers tables that predate this column
+  try {
+    await query(`ALTER TABLE customers ADD COLUMN referred_by VARCHAR(255)`);
+  } catch (err) {
+    // Column already exists — safe to ignore (Postgres: 42701, SQLite: "duplicate column name")
+  }
 
   // 3. Products table
   await query(`
@@ -245,6 +267,37 @@ async function initDatabase() {
       notes TEXT,
       created_at TIMESTAMP DEFAULT ${timestampDefault},
       FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE CASCADE
+    )
+  `);
+
+  // 9. Referrers table (people who refer customers, with a commission rule)
+  await query(`
+    CREATE TABLE IF NOT EXISTS referrers (
+      id ${idType},
+      owner_id INT NOT NULL,
+      name VARCHAR(255) NOT NULL,
+      commission_type VARCHAR(20) NOT NULL DEFAULT 'PERCENTAGE',
+      commission_value ${numericType} NOT NULL DEFAULT 0,
+      created_at TIMESTAMP DEFAULT ${timestampDefault},
+      FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE CASCADE
+    )
+  `);
+
+  // 10. Referral Payments table (monthly commission payouts, one per referrer per period)
+  await query(`
+    CREATE TABLE IF NOT EXISTS referral_payments (
+      id ${idType},
+      owner_id INT NOT NULL,
+      referrer_id INT NOT NULL,
+      period VARCHAR(7) NOT NULL,
+      base_amount ${numericType} NOT NULL DEFAULT 0,
+      amount_paid ${numericType} NOT NULL,
+      expense_id INT,
+      paid_at TIMESTAMP DEFAULT ${timestampDefault},
+      FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY (referrer_id) REFERENCES referrers(id) ON DELETE CASCADE,
+      FOREIGN KEY (expense_id) REFERENCES expenses(id) ON DELETE SET NULL,
+      UNIQUE (referrer_id, period)
     )
   `);
 

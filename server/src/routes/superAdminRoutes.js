@@ -6,17 +6,52 @@ const { verifyAuth, requireRole } = require('../middleware/authMiddleware');
 const { sanitizeBody } = require('../middleware/securityMiddleware');
 const { createSellerSchema } = require('../utils/validationSchemas');
 const { logSecurityEvent } = require('../utils/logger');
+const { slugify } = require('../utils/slugify');
+
+const PLATFORM_DOMAIN = process.env.PLATFORM_DOMAIN || 'duoimportados.com.br';
+
+// Finds a free subdomain slug, appending -2, -3... on collision
+async function generateUniqueSubdomain(preferred) {
+  let base = slugify(preferred);
+  if (!base) base = `vendedor-${Date.now().toString(36)}`;
+
+  let candidate = base;
+  let suffix = 2;
+  while (await queryOne('SELECT id FROM users WHERE subdomain = ?', [candidate])) {
+    candidate = `${base}-${suffix}`;
+    suffix += 1;
+  }
+  return candidate;
+}
 
 // Strict Protection: Require Authentication AND SUPER_ADMIN role
 router.use(verifyAuth);
 router.use(requireRole('SUPER_ADMIN'));
 router.use(sanitizeBody);
 
+// GET /api/super-admin/stats - Summary counts for the sellers overview cards
+router.get('/stats', async (req, res) => {
+  try {
+    const totalRow = await queryOne(`SELECT COUNT(*) as count FROM users WHERE role = 'SELLER'`);
+    const activeRow = await queryOne(`SELECT COUNT(*) as count FROM users WHERE role = 'SELLER' AND status = 'ACTIVE'`);
+    const blockedRow = await queryOne(`SELECT COUNT(*) as count FROM users WHERE role = 'SELLER' AND status = 'BLOCKED'`);
+
+    return res.json({
+      total_sellers: parseInt(totalRow?.count || 0),
+      active_sellers: parseInt(activeRow?.count || 0),
+      blocked_sellers: parseInt(blockedRow?.count || 0)
+    });
+  } catch (err) {
+    console.error('Error fetching super admin stats:', err);
+    return res.status(500).json({ error: 'Erro ao buscar estatísticas.' });
+  }
+});
+
 // GET /api/super-admin/sellers - List all sellers with summary metrics
 router.get('/sellers', async (req, res) => {
   try {
     const sellers = await query(
-      `SELECT u.id, u.name, u.phone, u.role, u.status, u.created_at,
+      `SELECT u.id, u.name, u.phone, u.role, u.status, u.subdomain, u.created_at,
         COUNT(DISTINCT c.id) as total_customers,
         COUNT(DISTINCT s.id) as total_sales,
         COALESCE(SUM(s.total_value), 0) as total_gross_sales
@@ -28,7 +63,12 @@ router.get('/sellers', async (req, res) => {
        ORDER BY u.created_at DESC`
     );
 
-    return res.json(sellers);
+    const sellersWithUrl = sellers.map((s) => ({
+      ...s,
+      subdomain_url: s.subdomain ? `${s.subdomain}.${PLATFORM_DOMAIN}` : null
+    }));
+
+    return res.json(sellersWithUrl);
   } catch (err) {
     console.error('Error fetching sellers:', err);
     return res.status(500).json({ error: 'Erro ao listar vendedores.' });
@@ -43,7 +83,7 @@ router.post('/sellers', async (req, res) => {
       return res.status(400).json({ error: parseResult.error.errors[0]?.message || 'Dados inválidos.' });
     }
 
-    const { name, phone, password } = parseResult.data;
+    const { name, phone, password, subdomain } = parseResult.data;
     const cleanPhone = phone.replace(/\D/g, '');
 
     // Check if phone is already registered
@@ -52,11 +92,13 @@ router.post('/sellers', async (req, res) => {
       return res.status(400).json({ error: 'Este número de telefone já está cadastrado.' });
     }
 
+    const finalSubdomain = await generateUniqueSubdomain(subdomain || name);
+
     const passwordHash = await bcrypt.hash(password, 10);
 
     const result = await query(
-      `INSERT INTO users (name, phone, password_hash, role, status) VALUES (?, ?, ?, 'SELLER', 'ACTIVE')`,
-      [name, phone, passwordHash]
+      `INSERT INTO users (name, phone, password_hash, role, status, subdomain) VALUES (?, ?, ?, 'SELLER', 'ACTIVE', ?)`,
+      [name, phone, passwordHash, finalSubdomain]
     );
 
     const newSellerId = result[0]?.id || result.insertId;
@@ -72,12 +114,21 @@ router.post('/sellers', async (req, res) => {
       newSellerId,
       sellerName: name,
       phone,
+      subdomain: finalSubdomain,
       ip: req.ip
     });
 
     return res.status(201).json({
-      message: 'Conta de vendedor criada com sucesso!',
-      seller: { id: newSellerId, name, phone, role: 'SELLER', status: 'ACTIVE' }
+      message: 'Conta de vendedor e subdomínio criados com sucesso!',
+      seller: {
+        id: newSellerId,
+        name,
+        phone,
+        role: 'SELLER',
+        status: 'ACTIVE',
+        subdomain: finalSubdomain,
+        subdomain_url: `${finalSubdomain}.${PLATFORM_DOMAIN}`
+      }
     });
   } catch (err) {
     console.error('Error creating seller:', err);

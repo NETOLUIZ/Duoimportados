@@ -109,12 +109,12 @@ router.post('/', async (req, res) => {
     }
 
     const ownerId = req.ownerId;
-    const { name, phone, cep, address, number, complement, neighborhood, city, state, notes } = parseResult.data;
+    const { name, phone, cep, address, number, complement, neighborhood, city, state, referred_by, notes } = parseResult.data;
 
     const result = await query(
-      `INSERT INTO customers 
-       (owner_id, name, phone, cep, address, number, complement, neighborhood, city, state, notes)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO customers
+       (owner_id, name, phone, cep, address, number, complement, neighborhood, city, state, referred_by, notes)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         ownerId,
         name,
@@ -126,6 +126,7 @@ router.post('/', async (req, res) => {
         neighborhood || null,
         city || null,
         state || null,
+        referred_by || null,
         notes || null
       ]
     );
@@ -161,12 +162,12 @@ router.put('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Cliente não encontrado.' });
     }
 
-    const { name, phone, cep, address, number, complement, neighborhood, city, state, notes } = parseResult.data;
+    const { name, phone, cep, address, number, complement, neighborhood, city, state, referred_by, notes } = parseResult.data;
 
     await query(
       `UPDATE customers SET
         name = ?, phone = ?, cep = ?, address = ?, number = ?,
-        complement = ?, neighborhood = ?, city = ?, state = ?, notes = ?
+        complement = ?, neighborhood = ?, city = ?, state = ?, referred_by = ?, notes = ?
        WHERE id = ? AND owner_id = ?`,
       [
         name,
@@ -178,6 +179,7 @@ router.put('/:id', async (req, res) => {
         neighborhood || null,
         city || null,
         state || null,
+        referred_by || null,
         notes || null,
         customerId,
         ownerId

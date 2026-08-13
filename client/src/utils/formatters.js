@@ -17,7 +17,7 @@ export function formatBRL(val) {
  */
 export function formatDate(dateStr) {
   if (!dateStr) return '-';
-  const cleanStr = String(dateStr).split('T')[0];
+  const cleanStr = String(dateStr).split('T')[0].split(' ')[0];
   const parts = cleanStr.split('-');
   if (parts.length === 3) {
     return `${parts[2]}/${parts[1]}/${parts[0]}`;

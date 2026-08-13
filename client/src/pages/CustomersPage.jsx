@@ -1,7 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Search, Plus, Phone, MapPin, Edit, Trash2, Eye, ShoppingCart, Clock, CheckCircle } from 'lucide-react';
+import { Users, Search, Plus, Phone, MapPin, Edit, Trash2, Eye, ShoppingCart, Clock, X } from 'lucide-react';
 import api from '../services/api';
-import { formatBRL, formatDate, formatPhone, getStatusBadge } from '../utils/formatters';
+import { formatBRL, formatDate, formatPhone } from '../utils/formatters';
+import StatusBadge, { InstallmentStatusBadge } from '../components/StatusBadge';
+import { AlertTriangle, CheckCircle2 } from 'lucide-react';
+
+function CustomerSituationBadge({ hasOverdue, hasDebt }) {
+  if (hasOverdue) return <StatusBadge tone="danger" label="Em Atraso" icon={AlertTriangle} />;
+  if (hasDebt) return <StatusBadge tone="warning" label="Em Aberto" icon={Clock} />;
+  return <StatusBadge tone="success" label="Em Dia" icon={CheckCircle2} />;
+}
 
 export default function CustomersPage({ onOpenNewCustomer, onEditCustomer }) {
   const [customers, setCustomers] = useState([]);
@@ -55,223 +63,284 @@ export default function CustomersPage({ onOpenNewCustomer, onEditCustomer }) {
   };
 
   return (
-    <div className="p-6 space-y-6 w-full max-w-full">
+    <div className="p-4 sm:p-6 space-y-5 sm:space-y-6 w-full max-w-full">
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-black text-slate-800 tracking-tight flex items-center gap-2">
-            <Users className="w-7 h-7 text-brand-blue" />
+          <h2 className="text-xl sm:text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight flex items-center gap-2">
+            <Users className="w-6 h-6 sm:w-7 sm:h-7 text-brand-blue" />
             Gestão de Clientes
           </h2>
-          <p className="text-sm text-slate-500">Cadastre e acompanhe o histórico de compras e parcelas de cada cliente.</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Cadastre e acompanhe o histórico de compras e parcelas de cada cliente.</p>
         </div>
         <button
           onClick={() => onOpenNewCustomer(null)}
-          className="bg-brand-blue hover:bg-brand-blueHover text-white font-bold py-3 px-5 rounded-2xl flex items-center gap-2 shadow-lg shadow-blue-900/30 transition-all text-sm"
+          className="w-full sm:w-auto bg-brand-blue hover:bg-brand-blueHover text-white font-bold py-3 px-5 min-h-[44px] rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-blue-900/30 transition-all text-sm"
         >
           <Plus className="w-5 h-5 stroke-[2.5]" />
-          <span>+ NOVO CLIENTE</span>
+          <span>NOVO CLIENTE</span>
         </button>
       </div>
 
       {/* Search Bar */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-3">
-        <Search className="w-5 h-5 text-slate-400" />
+      <div className="bg-white dark:bg-slate-900 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-3">
+        <Search className="w-5 h-5 text-slate-400 dark:text-slate-500 flex-shrink-0" />
         <input
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Buscar cliente por nome, telefone ou cidade..."
-          className="w-full text-slate-800 text-sm font-medium focus:outline-none"
+          className="w-full bg-transparent text-slate-800 dark:text-slate-100 text-sm font-medium focus:outline-none min-h-[28px]"
         />
       </div>
 
-      {/* Customers Table (100% Width Layout) */}
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+      {/* Customers List */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
         {loading ? (
-          <div className="p-8 text-center text-slate-500 font-medium">Carregando lista de clientes...</div>
+          <div className="p-8 text-center text-slate-500 dark:text-slate-400 font-medium">Carregando lista de clientes...</div>
         ) : customers.length === 0 ? (
-          <div className="p-12 text-center text-slate-400 space-y-2">
-            <Users className="w-12 h-12 mx-auto text-slate-300" />
-            <p className="text-base font-bold text-slate-600">Nenhum cliente encontrado</p>
-            <p className="text-xs">Cadastre novos clientes clicando no botão "+ NOVO CLIENTE" acima.</p>
+          <div className="p-12 text-center text-slate-400 dark:text-slate-500 space-y-2">
+            <Users className="w-12 h-12 mx-auto text-slate-300 dark:text-slate-700" />
+            <p className="text-base font-bold text-slate-600 dark:text-slate-300">Nenhum cliente encontrado</p>
+            <p className="text-xs">Cadastre novos clientes clicando no botão "NOVO CLIENTE" acima.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-50 text-slate-500 text-xs uppercase font-extrabold tracking-wider border-b border-slate-200">
-                  <th className="p-4 px-6">Cliente</th>
-                  <th className="p-4">Telefone / WhatsApp</th>
-                  <th className="p-4">Localização</th>
-                  <th className="p-4 text-center">Vendas</th>
-                  <th className="p-4 text-right">Saldo Devedor</th>
-                  <th className="p-4 text-center">Situação</th>
-                  <th className="p-4 text-right px-6">Ações</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-sm font-medium">
-                {customers.map((c) => {
-                  const hasOverdue = parseInt(c.overdue_count || 0) > 0;
-                  const hasDebt = parseFloat(c.total_debt || 0) > 0;
+          <>
+            {/* Mobile card list */}
+            <div className="md:hidden divide-y divide-slate-100 dark:divide-slate-800">
+              {customers.map((c) => {
+                const hasOverdue = parseInt(c.overdue_count || 0) > 0;
+                const hasDebt = parseFloat(c.total_debt || 0) > 0;
+                return (
+                  <div key={c.id} className="p-4 space-y-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="font-bold text-slate-800 dark:text-slate-100 truncate">{c.name}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                          {c.city ? `${c.city}${c.state ? ` - ${c.state}` : ''}` : 'Sem localização'}
+                        </p>
+                      </div>
+                      <CustomerSituationBadge hasOverdue={hasOverdue} hasDebt={hasDebt} />
+                    </div>
 
-                  return (
-                    <tr key={c.id} className="hover:bg-slate-50/80 transition-colors">
-                      <td className="p-4 px-6 font-bold text-slate-800">
-                        {c.name}
-                      </td>
-                      <td className="p-4 text-slate-600 font-mono">
-                        {c.phone ? (
-                          <a
-                            href={`https://wa.me/55${c.phone.replace(/\D/g, '')}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-emerald-600 hover:underline flex items-center gap-1 font-semibold"
+                    {c.phone && (
+                      <a
+                        href={`https://wa.me/55${c.phone.replace(/\D/g, '')}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-emerald-600 dark:text-emerald-400 text-sm font-semibold flex items-center gap-1.5 w-fit"
+                      >
+                        <Phone className="w-3.5 h-3.5" /> {formatPhone(c.phone)}
+                      </a>
+                    )}
+
+                    <div className="flex items-center justify-between text-sm pt-1">
+                      <span className="text-slate-500 dark:text-slate-400">{c.total_sales || 0} venda(s)</span>
+                      <span className={`font-black ${hasDebt ? (hasOverdue ? 'text-rose-600 dark:text-rose-400' : 'text-brand-blue') : 'text-emerald-600 dark:text-emerald-400'}`}>
+                        {hasDebt ? formatBRL(c.total_debt) : 'Quitado'}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2 pt-1">
+                      <button
+                        onClick={() => handleViewCustomer(c)}
+                        className="flex-1 min-h-[40px] flex items-center justify-center gap-1.5 bg-blue-50 dark:bg-blue-500/10 text-brand-blue rounded-xl text-xs font-bold"
+                      >
+                        <Eye className="w-4 h-4" /> Ver
+                      </button>
+                      <button
+                        onClick={() => onEditCustomer(c)}
+                        className="flex-1 min-h-[40px] flex items-center justify-center gap-1.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold"
+                      >
+                        <Edit className="w-4 h-4" /> Editar
+                      </button>
+                      <button
+                        onClick={() => handleDelete(c.id, c.name)}
+                        aria-label={`Excluir cliente ${c.name}`}
+                        className="w-11 min-h-[40px] flex items-center justify-center bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 rounded-xl"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Desktop table */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 text-xs uppercase font-extrabold tracking-wider border-b border-slate-200 dark:border-slate-800">
+                    <th className="p-4 px-6">Cliente</th>
+                    <th className="p-4">Telefone / WhatsApp</th>
+                    <th className="p-4">Localização</th>
+                    <th className="p-4 text-center">Vendas</th>
+                    <th className="p-4 text-right">Saldo Devedor</th>
+                    <th className="p-4 text-center">Situação</th>
+                    <th className="p-4 text-right px-6">Ações</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-sm font-medium">
+                  {customers.map((c) => {
+                    const hasOverdue = parseInt(c.overdue_count || 0) > 0;
+                    const hasDebt = parseFloat(c.total_debt || 0) > 0;
+
+                    return (
+                      <tr key={c.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
+                        <td className="p-4 px-6 font-bold text-slate-800 dark:text-slate-100">
+                          {c.name}
+                        </td>
+                        <td className="p-4 text-slate-600 dark:text-slate-300 font-mono">
+                          {c.phone ? (
+                            <a
+                              href={`https://wa.me/55${c.phone.replace(/\D/g, '')}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1 font-semibold"
+                            >
+                              <Phone className="w-3.5 h-3.5" />
+                              {formatPhone(c.phone)}
+                            </a>
+                          ) : (
+                            <span className="text-slate-400 dark:text-slate-500 font-sans italic">Não informado</span>
+                          )}
+                        </td>
+                        <td className="p-4 text-slate-600 dark:text-slate-300">
+                          {c.city ? `${c.city}${c.state ? ` - ${c.state}` : ''}` : '-'}
+                        </td>
+                        <td className="p-4 text-center font-bold text-slate-700 dark:text-slate-300">
+                          {c.total_sales || 0}
+                        </td>
+                        <td className="p-4 text-right font-black text-slate-800 dark:text-slate-100">
+                          {hasDebt ? (
+                            <span className={hasOverdue ? 'text-rose-600 dark:text-rose-400' : 'text-brand-blue'}>
+                              {formatBRL(c.total_debt)}
+                            </span>
+                          ) : (
+                            <span className="text-emerald-600 dark:text-emerald-400 font-bold">Quitado R$ 0,00</span>
+                          )}
+                        </td>
+                        <td className="p-4 text-center">
+                          <CustomerSituationBadge hasOverdue={hasOverdue} hasDebt={hasDebt} />
+                        </td>
+                        <td className="p-4 text-right px-6 space-x-2 whitespace-nowrap">
+                          <button
+                            onClick={() => handleViewCustomer(c)}
+                            title="Visualizar histórico"
+                            aria-label={`Visualizar histórico de ${c.name}`}
+                            className="p-2 bg-blue-50 dark:bg-blue-500/10 hover:bg-blue-100 dark:hover:bg-blue-500/20 text-brand-blue rounded-xl transition-colors"
                           >
-                            <Phone className="w-3.5 h-3.5" />
-                            {formatPhone(c.phone)}
-                          </a>
-                        ) : (
-                          <span className="text-slate-400 font-sans italic">Não informado</span>
-                        )}
-                      </td>
-                      <td className="p-4 text-slate-600">
-                        {c.city ? `${c.city}${c.state ? ` - ${c.state}` : ''}` : '-'}
-                      </td>
-                      <td className="p-4 text-center font-bold text-slate-700">
-                        {c.total_sales || 0}
-                      </td>
-                      <td className="p-4 text-right font-black text-slate-800">
-                        {hasDebt ? (
-                          <span className={hasOverdue ? 'text-rose-600' : 'text-brand-blue'}>
-                            {formatBRL(c.total_debt)}
-                          </span>
-                        ) : (
-                          <span className="text-emerald-600 font-bold">Quitado R$ 0,00</span>
-                        )}
-                      </td>
-                      <td className="p-4 text-center">
-                        {hasOverdue ? (
-                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-black bg-rose-100 text-rose-800 border border-rose-300">
-                            🔴 Em Atraso
-                          </span>
-                        ) : hasDebt ? (
-                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300">
-                            🟡 Em Aberto
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
-                            🟢 Em Dia
-                          </span>
-                        )}
-                      </td>
-                      <td className="p-4 text-right px-6 space-x-2 whitespace-nowrap">
-                        <button
-                          onClick={() => handleViewCustomer(c)}
-                          title="Visualizar histórico"
-                          className="p-2 bg-blue-50 hover:bg-blue-100 text-brand-blue rounded-xl transition-colors"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => onEditCustomer(c)}
-                          title="Editar cliente"
-                          className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-colors"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(c.id, c.name)}
-                          title="Excluir cliente"
-                          className="p-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl transition-colors"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                            <Eye className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => onEditCustomer(c)}
+                            title="Editar cliente"
+                            aria-label={`Editar cliente ${c.name}`}
+                            className="p-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl transition-colors"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(c.id, c.name)}
+                            title="Excluir cliente"
+                            aria-label={`Excluir cliente ${c.name}`}
+                            className="p-2 bg-rose-50 dark:bg-rose-500/10 hover:bg-rose-100 dark:hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 rounded-xl transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
 
       {/* Customer Detailed Profile Modal/Drawer */}
       {selectedCustomer && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto border border-slate-200 p-6 space-y-6">
-            <div className="flex items-center justify-between border-b border-slate-200 pb-4">
-              <div>
-                <h3 className="text-xl font-extrabold text-slate-800">{selectedCustomer.name}</h3>
-                <p className="text-xs text-slate-500 flex items-center gap-2 mt-1">
-                  <Phone className="w-3.5 h-3.5 text-emerald-600" /> {formatPhone(selectedCustomer.phone) || 'Sem telefone'} |
-                  <MapPin className="w-3.5 h-3.5 text-brand-blue" /> {selectedCustomer.address || 'Sem endereço'}, {selectedCustomer.city || ''}
+        <div
+          className="fixed inset-0 z-50 bg-slate-900/60 dark:bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4"
+          role="dialog"
+          aria-modal="true"
+          onMouseDown={(e) => { if (e.target === e.currentTarget) setSelectedCustomer(null); }}
+        >
+          <div className="bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-3xl shadow-2xl max-w-4xl w-full max-h-[92vh] border border-slate-200 dark:border-slate-800 flex flex-col">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 p-5 sm:p-6 flex-shrink-0">
+              <div className="min-w-0">
+                <h3 className="text-lg sm:text-xl font-extrabold text-slate-800 dark:text-slate-100 truncate">{selectedCustomer.name}</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
+                  <span className="flex items-center gap-1"><Phone className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> {formatPhone(selectedCustomer.phone) || 'Sem telefone'}</span>
+                  <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5 text-brand-blue" /> {selectedCustomer.address || 'Sem endereço'}, {selectedCustomer.city || ''}</span>
                 </p>
               </div>
-              <button onClick={() => setSelectedCustomer(null)} className="p-2 bg-slate-100 hover:bg-slate-200 rounded-xl text-slate-700">
-                Fechar
+              <button
+                onClick={() => setSelectedCustomer(null)}
+                aria-label="Fechar"
+                className="w-11 h-11 flex-shrink-0 flex items-center justify-center bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl text-slate-700 dark:text-slate-300 transition-colors"
+              >
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            {loadingDetails ? (
-              <div className="p-8 text-center text-slate-500">Carregando detalhes do cliente...</div>
-            ) : (
-              <div className="space-y-6">
-                {/* Sales Section */}
-                <div>
-                  <h4 className="text-sm font-extrabold uppercase tracking-wider text-slate-700 mb-3 flex items-center gap-2">
-                    <ShoppingCart className="w-4 h-4 text-brand-blue" />
-                    Histórico de Vendas ({customerDetails?.sales?.length || 0})
-                  </h4>
-                  {customerDetails?.sales?.length === 0 ? (
-                    <p className="text-xs text-slate-400">Nenhuma venda registrada para este cliente.</p>
-                  ) : (
-                    <div className="space-y-2">
-                      {customerDetails?.sales?.map(s => (
-                        <div key={s.id} className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex justify-between items-center text-sm">
-                          <div>
-                            <p className="font-bold text-slate-800">{s.product_name}</p>
-                            <p className="text-xs text-slate-500">Data: {formatDate(s.sale_date)} | Modalidade: {s.payment_mode} ({s.installment_count}x)</p>
+            <div className="p-5 sm:p-6 overflow-y-auto flex-1">
+              {loadingDetails ? (
+                <div className="p-8 text-center text-slate-500 dark:text-slate-400">Carregando detalhes do cliente...</div>
+              ) : (
+                <div className="space-y-6">
+                  {/* Sales Section */}
+                  <div>
+                    <h4 className="text-sm font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-2">
+                      <ShoppingCart className="w-4 h-4 text-brand-blue" />
+                      Histórico de Vendas ({customerDetails?.sales?.length || 0})
+                    </h4>
+                    {customerDetails?.sales?.length === 0 ? (
+                      <p className="text-xs text-slate-400 dark:text-slate-500">Nenhuma venda registrada para este cliente.</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {customerDetails?.sales?.map(s => (
+                          <div key={s.id} className="p-4 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-2xl flex flex-col sm:flex-row justify-between sm:items-center gap-2 text-sm">
+                            <div>
+                              <p className="font-bold text-slate-800 dark:text-slate-100">{s.product_name}</p>
+                              <p className="text-xs text-slate-500 dark:text-slate-400">Data: {formatDate(s.sale_date)} | Modalidade: {s.payment_mode} ({s.installment_count}x)</p>
+                            </div>
+                            <div className="sm:text-right">
+                              <p className="font-black text-slate-800 dark:text-slate-100">{formatBRL(s.total_value)}</p>
+                              <p className="text-xs text-slate-400 dark:text-slate-500">Juros: {formatBRL(s.interest_value)}</p>
+                            </div>
                           </div>
-                          <div className="text-right">
-                            <p className="font-black text-slate-800">{formatBRL(s.total_value)}</p>
-                            <p className="text-xs text-slate-400">Juros: {formatBRL(s.interest_value)}</p>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Installments Schedule */}
+                  <div>
+                    <h4 className="text-sm font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-2">
+                      <Clock className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                      Cronograma de Parcelas
+                    </h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {customerDetails?.installments?.map(i => (
+                        <div key={i.id} className="p-3.5 bg-white dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-2xl flex items-center justify-between shadow-sm gap-2">
+                          <div className="min-w-0">
+                            <p className="text-xs font-bold text-slate-700 dark:text-slate-300 truncate">{i.product_name} (Parc. {i.installment_number})</p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Vencimento: <span className="font-bold">{formatDate(i.due_date)}</span></p>
+                          </div>
+                          <div className="text-right flex-shrink-0">
+                            <p className="text-sm font-black text-slate-800 dark:text-slate-100">{formatBRL(i.amount)}</p>
+                            <InstallmentStatusBadge status={i.status} className="mt-0.5" />
                           </div>
                         </div>
                       ))}
                     </div>
-                  )}
-                </div>
-
-                {/* Installments Schedule */}
-                <div>
-                  <h4 className="text-sm font-extrabold uppercase tracking-wider text-slate-700 mb-3 flex items-center gap-2">
-                    <Clock className="w-4 h-4 text-amber-600" />
-                    Cronograma de Parcelas
-                  </h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {customerDetails?.installments?.map(i => {
-                      const badge = getStatusBadge(i.status);
-                      return (
-                        <div key={i.id} className="p-3.5 bg-white border border-slate-200 rounded-2xl flex items-center justify-between shadow-sm">
-                          <div>
-                            <p className="text-xs font-bold text-slate-700">{i.product_name} (Parc. {i.installment_number})</p>
-                            <p className="text-xs text-slate-500 mt-0.5">Vencimento: <span className="font-bold">{formatDate(i.due_date)}</span></p>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-sm font-black text-slate-800">{formatBRL(i.amount)}</p>
-                            <span className={`inline-block text-[11px] font-bold px-2 py-0.5 rounded-full mt-0.5 ${badge.bg} ${badge.text}`}>
-                              {badge.label}
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })}
                   </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
       )}

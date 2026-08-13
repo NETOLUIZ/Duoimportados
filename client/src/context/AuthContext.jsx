@@ -34,12 +34,14 @@ export function AuthProvider({ children }) {
       await api.post('/auth/logout');
     } catch (e) {}
     localStorage.removeItem('vendas_target_seller_id');
+    sessionStorage.removeItem('overdue_alert_shown');
     setUser(null);
     setActiveSellerId(null);
     window.location.href = '/login';
   };
 
   const switchTargetSeller = (sellerId) => {
+    sessionStorage.removeItem('overdue_alert_shown');
     if (sellerId) {
       localStorage.setItem('vendas_target_seller_id', sellerId);
       setActiveSellerId(sellerId);

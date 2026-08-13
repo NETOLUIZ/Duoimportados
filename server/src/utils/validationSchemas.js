@@ -17,6 +17,7 @@ const customerSchema = z.object({
   neighborhood: z.string().trim().optional().nullable(),
   city: z.string().trim().optional().nullable(),
   state: z.string().trim().optional().nullable(),
+  referred_by: z.string().trim().optional().nullable(),
   notes: z.string().trim().optional().nullable()
 });
 
@@ -53,7 +54,17 @@ const expenseSchema = z.object({
 const createSellerSchema = z.object({
   name: z.string().trim().min(2, 'Nome do vendedor obrigatório'),
   phone: z.string().trim().min(8, 'Telefone obrigatório'),
-  password: z.string().min(6, 'Senha deve ter no mínimo 6 caracteres')
+  password: z.string().min(6, 'Senha deve ter no mínimo 6 caracteres'),
+  subdomain: z.string().trim().max(63).optional().nullable()
+});
+
+// 7. Referral Schemas
+const referrerConfigSchema = z.object({
+  name: z.string().trim().min(1, 'Nome do indicador é obrigatório').max(255),
+  commission_type: z.enum(['PERCENTAGE', 'FIXED']),
+  commission_value: z.union([z.string(), z.number()])
+    .transform(val => Number(String(val).replace(',', '.')))
+    .refine(val => !isNaN(val) && val >= 0, 'Valor de comissão inválido.')
 });
 
 module.exports = {
@@ -62,5 +73,6 @@ module.exports = {
   saleSchema,
   paymentSchema,
   expenseSchema,
-  createSellerSchema
+  createSellerSchema,
+  referrerConfigSchema
 };

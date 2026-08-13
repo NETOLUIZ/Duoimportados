@@ -3,6 +3,10 @@ import { X, ShoppingCart, Calendar, User, DollarSign, Calculator, AlertCircle } 
 import api from '../services/api';
 import { formatBRL, formatDate } from '../utils/formatters';
 
+const inputClass =
+  'w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-100 text-sm rounded-xl p-3 min-h-[44px] font-medium placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:ring-2 focus:ring-brand-blue focus:bg-white dark:focus:bg-slate-900 focus:outline-none transition-colors';
+const labelClass = 'block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1.5 flex items-center gap-1.5';
+
 export default function NewSaleModal({ isOpen, onClose, onSuccess }) {
   const [customers, setCustomers] = useState([]);
   const [loadingCustomers, setLoadingCustomers] = useState(false);
@@ -39,6 +43,15 @@ export default function NewSaleModal({ isOpen, onClose, onSuccess }) {
       setFirstDueDate(defaultDate.toISOString().split('T')[0]);
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -96,51 +109,62 @@ export default function NewSaleModal({ isOpen, onClose, onSuccess }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden border border-slate-200 transform transition-all my-8">
+    <div
+      className="fixed inset-0 z-50 bg-slate-900/60 dark:bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="sale-modal-title"
+      onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-2xl shadow-2xl max-w-2xl w-full border border-slate-200 dark:border-slate-800 flex flex-col max-h-[92vh] sm:max-h-[90vh]">
         {/* Header */}
-        <div className="bg-navy-900 text-white p-5 px-6 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-brand-blue flex items-center justify-center">
+        <div className="bg-navy-900 text-white p-5 px-6 flex items-center justify-between flex-shrink-0 rounded-t-3xl sm:rounded-t-2xl">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-xl bg-brand-blue flex items-center justify-center flex-shrink-0">
               <ShoppingCart className="w-5 h-5 text-white" />
             </div>
-            <div>
-              <h3 className="text-lg font-bold">Registrar Nova Venda</h3>
+            <div className="min-w-0">
+              <h3 id="sale-modal-title" className="text-lg font-bold truncate">Registrar Nova Venda</h3>
               <p className="text-xs text-slate-300">Geração automática de crediário e parcelas</p>
             </div>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-white p-1 rounded-lg">
+          <button
+            onClick={onClose}
+            aria-label="Fechar"
+            className="text-slate-400 hover:text-white w-11 h-11 flex-shrink-0 flex items-center justify-center rounded-xl hover:bg-white/10 transition-colors"
+          >
             <X className="w-6 h-6" />
           </button>
         </div>
 
-        {/* Body Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+        {/* Body Form (scrollable) */}
+        <form id="new-sale-form" onSubmit={handleSubmit} className="p-5 sm:p-6 space-y-5 overflow-y-auto flex-1">
           {error && (
-            <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-sm flex items-center gap-2 font-medium">
-              <AlertCircle className="w-5 h-5 flex-shrink-0 text-rose-600" />
+            <div role="alert" className="p-4 bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/30 rounded-xl text-rose-700 dark:text-rose-300 text-sm flex items-center gap-2 font-medium">
+              <AlertCircle className="w-5 h-5 flex-shrink-0 text-rose-600 dark:text-rose-400" />
               <span>{error}</span>
             </div>
           )}
 
           {/* Customer Selector */}
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5 flex items-center gap-1.5">
+            <label htmlFor="sale-customer" className={labelClass}>
               <User className="w-4 h-4 text-brand-blue" />
               Cliente *
             </label>
             {loadingCustomers ? (
-              <div className="p-3 text-sm text-slate-500 bg-slate-100 rounded-xl">Carregando clientes...</div>
+              <div className="p-3 text-sm text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 rounded-xl">Carregando clientes...</div>
             ) : customers.length === 0 ? (
-              <div className="p-3 bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-xl font-medium">
+              <div className="p-3 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 text-amber-800 dark:text-amber-300 text-sm rounded-xl font-medium">
                 Nenhum cliente cadastrado. Cadastre um cliente antes de realizar uma venda.
               </div>
             ) : (
               <select
+                id="sale-customer"
                 value={customerId}
                 onChange={(e) => setCustomerId(e.target.value)}
                 required
-                className="w-full bg-slate-50 border border-slate-300 text-slate-800 text-sm rounded-xl p-3 font-semibold focus:ring-2 focus:ring-brand-blue focus:bg-white focus:outline-none transition-all"
+                className={`${inputClass} font-semibold`}
               >
                 {customers.map(c => (
                   <option key={c.id} value={c.id}>
@@ -154,85 +178,89 @@ export default function NewSaleModal({ isOpen, onClose, onSuccess }) {
           {/* Product & Product Value */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
-                Produto Vendido *
-              </label>
+              <label htmlFor="sale-product" className={labelClass}>Produto Vendido *</label>
               <input
+                id="sale-product"
                 type="text"
                 value={productName}
                 onChange={(e) => setProductName(e.target.value)}
                 placeholder="Ex: iPhone 15, Perfume, Relógio..."
                 required
-                className="w-full bg-slate-50 border border-slate-300 text-slate-800 text-sm rounded-xl p-3 font-medium focus:ring-2 focus:ring-brand-blue focus:bg-white focus:outline-none"
+                className={inputClass}
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5 flex items-center gap-1">
+              <label htmlFor="sale-value" className={labelClass}>
                 <DollarSign className="w-4 h-4 text-emerald-600" />
                 Valor do Produto (R$) *
               </label>
               <input
+                id="sale-value"
                 type="number"
+                inputMode="decimal"
                 step="0.01"
                 min="0.01"
                 value={productValue}
                 onChange={(e) => setProductValue(e.target.value)}
                 placeholder="0.00"
                 required
-                className="w-full bg-slate-50 border border-slate-300 text-slate-800 text-base rounded-xl p-3 font-bold text-emerald-700 focus:ring-2 focus:ring-brand-blue focus:bg-white focus:outline-none"
+                className={`${inputClass} text-base font-bold text-emerald-700 dark:text-emerald-400`}
               />
             </div>
           </div>
 
           {/* Interest & Frequency */}
-          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5 flex items-center justify-between">
-                <span>Juros Venda (%)</span>
+              <label htmlFor="sale-interest" className={labelClass}>
+                <span>Juros (%)</span>
               </label>
               <div className="relative">
                 <input
+                  id="sale-interest"
                   type="number"
+                  inputMode="decimal"
                   step="0.1"
                   min="0"
                   max="100"
                   value={interestPercent}
                   onChange={(e) => setInterestPercent(e.target.value)}
                   placeholder="0"
-                  className="w-full bg-slate-50 border border-slate-300 text-slate-800 text-sm rounded-xl p-3 pr-7 font-bold text-amber-700 focus:ring-2 focus:ring-brand-blue focus:bg-white focus:outline-none"
+                  className={`${inputClass} pr-7 font-bold text-amber-700 dark:text-amber-400`}
                 />
-                <span className="absolute right-2.5 top-3 text-slate-400 font-bold text-xs">%</span>
+                <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 font-bold text-xs">%</span>
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5 flex items-center justify-between">
-                <span>Juros Atraso (%/dia)</span>
+              <label htmlFor="sale-late-fee" className={labelClass}>
+                <span>Atraso (%/dia)</span>
               </label>
               <div className="relative">
                 <input
+                  id="sale-late-fee"
                   type="number"
+                  inputMode="decimal"
                   step="0.1"
                   min="0"
                   max="20"
                   value={lateFeePercentPerDay}
                   onChange={(e) => setLateFeePercentPerDay(e.target.value)}
                   placeholder="1.0"
-                  className="w-full bg-slate-50 border border-rose-300 text-rose-700 text-sm rounded-xl p-3 pr-10 font-bold focus:ring-2 focus:ring-rose-500 focus:bg-white focus:outline-none"
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-rose-300 dark:border-rose-500/40 text-rose-700 dark:text-rose-400 text-sm rounded-xl p-3 min-h-[44px] pr-10 font-bold focus:ring-2 focus:ring-rose-500 focus:bg-white dark:focus:bg-slate-900 focus:outline-none transition-colors"
                 />
-                <span className="absolute right-2 top-3 text-rose-500 font-extrabold text-[11px]">%/dia</span>
+                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-rose-500 dark:text-rose-400 font-extrabold text-[11px]">%/dia</span>
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
-                Modalidade *
-              </label>
+              <label htmlFor="sale-mode" className={labelClass}>Modalidade *</label>
               <select
+                id="sale-mode"
                 value={paymentMode}
                 onChange={(e) => setPaymentMode(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-300 text-slate-800 text-sm rounded-xl p-3 font-semibold focus:ring-2 focus:ring-brand-blue focus:bg-white focus:outline-none"
+                className={`${inputClass} font-semibold`}
               >
                 <option value="DIARIA">DIÁRIA</option>
                 <option value="QUINZENAL">QUINZENAL</option>
@@ -241,38 +269,39 @@ export default function NewSaleModal({ isOpen, onClose, onSuccess }) {
             </div>
 
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
-                Parcelas *
-              </label>
+              <label htmlFor="sale-installments" className={labelClass}>Parcelas *</label>
               <input
+                id="sale-installments"
                 type="number"
+                inputMode="numeric"
                 min="1"
                 max="60"
                 value={installmentCount}
                 onChange={(e) => setInstallmentCount(e.target.value)}
                 required
-                className="w-full bg-slate-50 border border-slate-300 text-slate-800 text-sm rounded-xl p-3 font-bold text-center focus:ring-2 focus:ring-brand-blue focus:bg-white focus:outline-none"
+                className={`${inputClass} font-bold text-center`}
               />
             </div>
           </div>
 
           {/* First Due Date */}
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5 flex items-center gap-1.5">
+            <label htmlFor="sale-due-date" className={labelClass}>
               <Calendar className="w-4 h-4 text-amber-600" />
               Data do 1º Vencimento *
             </label>
             <input
+              id="sale-due-date"
               type="date"
               value={firstDueDate}
               onChange={(e) => setFirstDueDate(e.target.value)}
               required
-              className="w-full bg-slate-50 border border-slate-300 text-slate-800 text-sm rounded-xl p-3 font-semibold focus:ring-2 focus:ring-brand-blue focus:bg-white focus:outline-none"
+              className={`${inputClass} font-semibold`}
             />
           </div>
 
-          {/* RESUMO PRÉ-CONFIRMAÇÃO (Section 6 Requirement) */}
-          <div className="bg-slate-900 text-white rounded-2xl p-5 border border-slate-800 shadow-inner space-y-3">
+          {/* RESUMO PRÉ-CONFIRMAÇÃO */}
+          <div className="bg-slate-900 dark:bg-black/40 text-white rounded-2xl p-5 border border-slate-800 dark:border-slate-700 shadow-inner space-y-3">
             <div className="flex items-center gap-2 border-b border-slate-800 pb-2 text-brand-blue font-bold text-xs uppercase tracking-wider">
               <Calculator className="w-4 h-4" />
               <span>Resumo da Venda</span>
@@ -305,25 +334,26 @@ export default function NewSaleModal({ isOpen, onClose, onSuccess }) {
               </div>
             </div>
           </div>
-
-          {/* Buttons */}
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-5 py-3 rounded-xl border border-slate-300 text-slate-700 font-semibold text-sm hover:bg-slate-100 transition-colors"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              disabled={submitting || customers.length === 0}
-              className="px-6 py-3 rounded-xl bg-brand-blue hover:bg-brand-blueHover text-white font-bold text-sm shadow-lg shadow-blue-900/30 transition-all flex items-center gap-2 disabled:opacity-50"
-            >
-              {submitting ? 'Gerando Parcelas...' : 'CONFIRMAR VENDA'}
-            </button>
-          </div>
         </form>
+
+        {/* Buttons (sticky footer) */}
+        <div className="flex-shrink-0 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 sm:p-5 pb-safe flex flex-col-reverse sm:flex-row items-center justify-end gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-full sm:w-auto px-5 py-3 min-h-[44px] rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-sm hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            form="new-sale-form"
+            disabled={submitting || customers.length === 0}
+            className="w-full sm:w-auto px-6 py-3 min-h-[44px] rounded-xl bg-brand-blue hover:bg-brand-blueHover text-white font-bold text-sm shadow-lg shadow-blue-900/30 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+          >
+            {submitting ? 'Gerando Parcelas...' : 'CONFIRMAR VENDA'}
+          </button>
+        </div>
       </div>
     </div>
   );
