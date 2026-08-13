@@ -35,7 +35,16 @@ async function query(sql, params = []) {
   if (isPgConnected && pool) {
     try {
       let paramIndex = 1;
-      const pgSql = sql.replace(/\?/g, () => `$${paramIndex++}`);
+      let pgSql = sql.replace(/\?/g, () => `$${paramIndex++}`);
+
+      // Auto-append RETURNING id to plain INSERTs so callers can rely on
+      // result[0].id on Postgres the same way they already can on the
+      // SQLite fallback (which derives it via last_insert_rowid()).
+      const trimmedUpper = pgSql.trim().toUpperCase();
+      if (trimmedUpper.startsWith('INSERT') && !trimmedUpper.includes('RETURNING')) {
+        pgSql = pgSql.trim().replace(/;\s*$/, '') + ' RETURNING id';
+      }
+
       const res = await pool.query(pgSql, params);
       return res.rows;
     } catch (err) {
