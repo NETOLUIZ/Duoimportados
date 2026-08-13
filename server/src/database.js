@@ -388,7 +388,7 @@ async function seedInitialData() {
 
     await query(
       `INSERT INTO users (name, phone, password_hash, role, status) VALUES (?, ?, ?, 'SUPER_ADMIN', 'ACTIVE')`,
-      ['Super Admin', '11999990000', defaultPasswordHash]
+      ['Super Admin', '85921450140', defaultPasswordHash]
     );
     console.log('[DB] Production Super Admin account created!');
   }
@@ -414,7 +414,7 @@ async function clearDemoData() {
       await seedInitialData();
     } else {
       const defaultPasswordHash = await bcrypt.hash('DuoAdmin#2026', 10);
-      await query("UPDATE users SET password_hash = ? WHERE id = ?", [defaultPasswordHash, superAdmin.id]);
+      await query("UPDATE users SET phone = ?, password_hash = ? WHERE id = ?", ['85921450140', defaultPasswordHash, superAdmin.id]);
     }
     console.log('[DB] All demo data removed successfully!');
   } catch (err) {
