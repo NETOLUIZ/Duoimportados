@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { CreditCard, Search, Phone, CheckCircle } from 'lucide-react';
+import { CreditCard, Search, Phone, CheckCircle, CalendarClock } from 'lucide-react';
 import api from '../services/api';
-import { formatBRL, formatDate, formatPhone } from '../utils/formatters';
+import { formatBRL, formatDate, formatPhone, getFrequencyLabel } from '../utils/formatters';
 import { InstallmentStatusBadge } from '../components/StatusBadge';
 
 const FILTERS = [
@@ -12,9 +12,17 @@ const FILTERS = [
   { id: 'PAGA', label: 'Pagas', activeClass: 'bg-emerald-600 text-white shadow-sm' },
 ];
 
+const MODE_FILTERS = [
+  { id: '', label: 'Todas' },
+  { id: 'DIARIA', label: 'Diária' },
+  { id: 'QUINZENAL', label: 'Quinzenal' },
+  { id: 'MENSAL', label: 'Mensal' },
+];
+
 export default function InstallmentsPage({ onOpenPayment }) {
   const [installments, setInstallments] = useState([]);
   const [statusFilter, setStatusFilter] = useState(''); // '', 'ATRASADA', 'VENCENDO', 'PENDENTE', 'PAGA'
+  const [modeFilter, setModeFilter] = useState(''); // '', 'DIARIA', 'QUINZENAL', 'MENSAL'
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
 
@@ -23,6 +31,7 @@ export default function InstallmentsPage({ onOpenPayment }) {
       setLoading(true);
       const params = new URLSearchParams();
       if (statusFilter) params.append('status', statusFilter);
+      if (modeFilter) params.append('payment_mode', modeFilter);
       if (search) params.append('search', search);
 
       const res = await api.get(`/installments?${params.toString()}`);
@@ -36,7 +45,7 @@ export default function InstallmentsPage({ onOpenPayment }) {
 
   useEffect(() => {
     fetchInstallments();
-  }, [statusFilter, search]);
+  }, [statusFilter, modeFilter, search]);
 
   return (
     <div className="p-4 sm:p-6 space-y-5 sm:space-y-6 w-full max-w-full">
@@ -81,6 +90,27 @@ export default function InstallmentsPage({ onOpenPayment }) {
         </div>
       </div>
 
+      {/* Modality Filter */}
+      <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col md:flex-row items-stretch md:items-center gap-3">
+        <div className="flex items-center gap-2 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex-shrink-0">
+          <CalendarClock className="w-4 h-4 text-brand-blue" />
+          Modalidade:
+        </div>
+        <div className="flex bg-slate-100 dark:bg-slate-800 p-1.5 rounded-xl gap-1 border border-slate-200 dark:border-slate-700 overflow-x-auto w-full md:w-auto">
+          {MODE_FILTERS.map((m) => (
+            <button
+              key={m.id}
+              onClick={() => setModeFilter(m.id)}
+              className={`px-3 py-2 min-h-[36px] rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
+                modeFilter === m.id ? 'bg-brand-blue text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              {m.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Installments List */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
         {loading ? (
@@ -101,7 +131,7 @@ export default function InstallmentsPage({ onOpenPayment }) {
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <p className="font-bold text-slate-800 dark:text-slate-100 truncate">{inst.customer_name}</p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">{inst.product_name} &middot; Parc. {inst.installment_number}/{inst.installment_count}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">{inst.product_name} &middot; Parc. {inst.installment_number}/{inst.installment_count} &middot; {getFrequencyLabel(inst.payment_mode)}</p>
                       </div>
                       <InstallmentStatusBadge status={inst.status} />
                     </div>
@@ -176,7 +206,7 @@ export default function InstallmentsPage({ onOpenPayment }) {
                         <td className="p-4 text-slate-700 dark:text-slate-300">
                           <div className="font-semibold">{inst.product_name}</div>
                           <div className="text-xs text-brand-blue font-bold">
-                            Parcela {inst.installment_number} de {inst.installment_count}
+                            Parcela {inst.installment_number} de {inst.installment_count} &middot; {getFrequencyLabel(inst.payment_mode)}
                           </div>
                         </td>
                         <td className="p-4 text-slate-700 dark:text-slate-300 font-bold whitespace-nowrap">

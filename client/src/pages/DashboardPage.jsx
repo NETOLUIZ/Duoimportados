@@ -134,17 +134,21 @@ export default function DashboardPage({ onOpenNewSale, onOpenPayment }) {
         </div>
 
         {/* Card 5: Lucro */}
-        <div className={`bg-white dark:bg-slate-900 rounded-2xl p-5 border shadow-sm flex items-center justify-between ${isProfitPositive ? 'border-emerald-200 dark:border-emerald-500/20' : 'border-rose-200 dark:border-rose-500/20'}`}>
+        <div className={`rounded-2xl p-5 shadow-sm flex items-center justify-between ${
+          isProfitPositive
+            ? 'bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-500/20'
+            : 'bg-rose-50 dark:bg-rose-500/10 border-2 border-rose-300 dark:border-rose-500/30'
+        }`}>
           <div>
-            <p className={`text-xs font-bold uppercase tracking-wider ${isProfitPositive ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}`}>
+            <p className={`text-xs font-bold uppercase tracking-wider ${isProfitPositive ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-800 dark:text-rose-300'}`}>
               Lucro Realizado
             </p>
-            <p className={`text-2xl font-black mt-1 ${isProfitPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+            <p className={`text-2xl font-black mt-1 ${isProfitPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-300'}`}>
               {formatBRL(summary?.lucro)}
             </p>
-            <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">(Recebido - Despesas)</p>
+            <p className={`text-xs mt-1 ${isProfitPositive ? 'text-slate-400 dark:text-slate-500' : 'text-rose-800/80 dark:text-rose-300/80'}`}>(Recebido - Despesas)</p>
           </div>
-          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 ${isProfitPositive ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400'}`}>
+          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 ${isProfitPositive ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-rose-600 text-white shadow-md'}`}>
             <TrendingUp className="w-6 h-6" />
           </div>
         </div>

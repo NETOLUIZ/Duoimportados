@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { KeyRound } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { useTheme } from './context/ThemeContext';
 import api from './services/api';
@@ -13,6 +14,7 @@ import CustomerModal from './components/CustomerModal';
 import ExpenseModal from './components/ExpenseModal';
 import NewSellerModal from './components/NewSellerModal';
 import OverdueAlertModal from './components/OverdueAlertModal';
+import ChangePasswordModal from './components/ChangePasswordModal';
 
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
@@ -39,6 +41,7 @@ function ProtectedLayout() {
 
   const [isExpenseOpen, setIsExpenseOpen] = useState(false);
   const [isNewSellerOpen, setIsNewSellerOpen] = useState(false);
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
@@ -184,6 +187,19 @@ function ProtectedLayout() {
                       </div>
                       <ThemeToggle />
                     </div>
+                    <div className="pt-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between gap-4">
+                      <div>
+                        <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase block">Segurança</label>
+                        <p className="text-sm text-slate-600 dark:text-slate-300 mt-0.5">Troque sua senha de acesso</p>
+                      </div>
+                      <button
+                        onClick={() => setIsChangePasswordOpen(true)}
+                        className="flex items-center gap-1.5 px-4 py-2.5 min-h-[44px] rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-sm transition-colors flex-shrink-0"
+                      >
+                        <KeyRound className="w-4 h-4" />
+                        Trocar Senha
+                      </button>
+                    </div>
                   </div>
                 </div>
               }
@@ -247,6 +263,11 @@ function ProtectedLayout() {
         items={overdueAlert.items}
         totalValue={overdueAlert.total}
         onClose={() => setIsOverdueAlertOpen(false)}
+      />
+
+      <ChangePasswordModal
+        isOpen={isChangePasswordOpen}
+        onClose={() => setIsChangePasswordOpen(false)}
       />
     </div>
   );

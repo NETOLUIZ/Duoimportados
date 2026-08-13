@@ -14,7 +14,7 @@ router.use(sanitizeBody);
 router.get('/', async (req, res) => {
   try {
     const ownerId = req.ownerId;
-    const { status, customer_id, search, limit } = req.query;
+    const { status, customer_id, search, limit, payment_mode } = req.query;
 
     const todayStr = new Date().toISOString().split('T')[0];
     const dateIn2Days = new Date();
@@ -45,6 +45,11 @@ router.get('/', async (req, res) => {
       sql += ` AND (c.name LIKE ? OR s.product_name LIKE ? OR c.phone LIKE ?)`;
       const term = `%${search.trim()}%`;
       params.push(term, term, term);
+    }
+
+    if (['DIARIA', 'QUINZENAL', 'MENSAL'].includes(payment_mode)) {
+      sql += ` AND s.payment_mode = ?`;
+      params.push(payment_mode);
     }
 
     if (status === 'ATRASADA') {

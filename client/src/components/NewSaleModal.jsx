@@ -56,7 +56,9 @@ export default function NewSaleModal({ isOpen, onClose, onSuccess }) {
   if (!isOpen) return null;
 
   // Real-time summary calculation based on percentage %
-  const pVal = parseFloat(productValue.replace(/\./g, '').replace(',', '.')) || 0;
+  // productValue comes from a type="number" input, which is always period-decimal
+  // (e.g. "199.9") — never Brazilian-formatted, so no comma/thousands-dot handling needed.
+  const pVal = parseFloat(productValue) || 0;
   const iRate = parseFloat(interestPercent.replace(',', '.')) || 0;
   const lFeeRate = parseFloat(lateFeePercentPerDay.replace(',', '.')) || 1.0;
   const jVal = (pVal * iRate) / 100;
@@ -70,10 +72,6 @@ export default function NewSaleModal({ isOpen, onClose, onSuccess }) {
 
     if (!customerId) {
       setError('Por favor, selecione um cliente.');
-      return;
-    }
-    if (!productName.trim()) {
-      setError('Por favor, informe o nome do produto.');
       return;
     }
     if (pVal <= 0) {
@@ -178,14 +176,13 @@ export default function NewSaleModal({ isOpen, onClose, onSuccess }) {
           {/* Product & Product Value */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label htmlFor="sale-product" className={labelClass}>Produto Vendido *</label>
+              <label htmlFor="sale-product" className={labelClass}>Produto Vendido (Opcional)</label>
               <input
                 id="sale-product"
                 type="text"
                 value={productName}
                 onChange={(e) => setProductName(e.target.value)}
                 placeholder="Ex: iPhone 15, Perfume, Relógio..."
-                required
                 className={inputClass}
               />
             </div>
