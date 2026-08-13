@@ -55,28 +55,28 @@ router.get('/overview', async (req, res) => {
     // Sales in period
     const salesRes = await queryOne(
       `SELECT COALESCE(SUM(total_value), 0) as total FROM sales 
-       WHERE owner_id = ? AND sale_date >= ? AND sale_date <= ?`,
+       WHERE owner_id = ? AND CAST(sale_date AS TEXT) >= ? AND CAST(sale_date AS TEXT) <= ?`,
       [ownerId, startDate, endDate]
     );
 
     // Payments received in period
     const paymentsRes = await queryOne(
       `SELECT COALESCE(SUM(amount_paid), 0) as total FROM payments 
-       WHERE owner_id = ? AND payment_date >= ? AND payment_date <= ?`,
+       WHERE owner_id = ? AND CAST(payment_date AS TEXT) >= ? AND CAST(payment_date AS TEXT) <= ?`,
       [ownerId, startDate, endDate]
     );
 
     // Installments to receive (due in period and not paid)
     const toReceiveRes = await queryOne(
       `SELECT COALESCE(SUM(amount - amount_paid), 0) as total FROM installments 
-       WHERE owner_id = ? AND status != 'PAGA' AND due_date >= ? AND due_date <= ?`,
+       WHERE owner_id = ? AND status != 'PAGA' AND CAST(due_date AS TEXT) >= ? AND CAST(due_date AS TEXT) <= ?`,
       [ownerId, startDate, endDate]
     );
 
     // Expenses in period
     const expensesRes = await queryOne(
       `SELECT COALESCE(SUM(amount), 0) as total FROM expenses 
-       WHERE owner_id = ? AND expense_date >= ? AND expense_date <= ?`,
+       WHERE owner_id = ? AND CAST(expense_date AS TEXT) >= ? AND CAST(expense_date AS TEXT) <= ?`,
       [ownerId, startDate, endDate]
     );
 
@@ -84,7 +84,7 @@ router.get('/overview', async (req, res) => {
     const todayStr = new Date().toISOString().split('T')[0];
     const overdueRes = await queryOne(
       `SELECT COALESCE(SUM(amount - amount_paid), 0) as total FROM installments 
-       WHERE owner_id = ? AND status != 'PAGA' AND due_date < ?`,
+       WHERE owner_id = ? AND status != 'PAGA' AND CAST(due_date AS TEXT) < ?`,
       [ownerId, todayStr]
     );
 
@@ -100,18 +100,18 @@ router.get('/overview', async (req, res) => {
     // Build Receitas vs Despesas comparison timeline chart data
     // Fetch daily received vs expenses in date range
     const dailyPayments = await query(
-      `SELECT payment_date as date, SUM(amount_paid) as total_recebido
+      `SELECT CAST(payment_date AS TEXT) as date, SUM(amount_paid) as total_recebido
        FROM payments
-       WHERE owner_id = ? AND payment_date >= ? AND payment_date <= ?
-       GROUP BY payment_date`,
+       WHERE owner_id = ? AND CAST(payment_date AS TEXT) >= ? AND CAST(payment_date AS TEXT) <= ?
+       GROUP BY CAST(payment_date AS TEXT)`,
       [ownerId, startDate, endDate]
     );
 
     const dailyExpenses = await query(
-      `SELECT expense_date as date, SUM(amount) as total_despesa
+      `SELECT CAST(expense_date AS TEXT) as date, SUM(amount) as total_despesa
        FROM expenses
-       WHERE owner_id = ? AND expense_date >= ? AND expense_date <= ?
-       GROUP BY expense_date`,
+       WHERE owner_id = ? AND CAST(expense_date AS TEXT) >= ? AND CAST(expense_date AS TEXT) <= ?
+       GROUP BY CAST(expense_date AS TEXT)`,
       [ownerId, startDate, endDate]
     );
 
