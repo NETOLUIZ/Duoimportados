@@ -43,7 +43,7 @@ services:
     container_name: controlevendas_frontend
     restart: always
     ports:
-      - "3008:3000"
+      - "3088:3000"
     depends_on:
       - backend
 
