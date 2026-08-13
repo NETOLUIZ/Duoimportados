@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, Plus, Users, CheckCircle, Ban, Key, UserCheck, Globe, Copy, Check } from 'lucide-react';
+import { Shield, Plus, Users, CheckCircle, Ban, Key, UserCheck, Globe, Copy, Check, Trash2 } from 'lucide-react';
 import api from '../services/api';
 import { formatDate, formatPhone } from '../utils/formatters';
-import { useAuth } from '../context/AuthContext';
 
 export default function SuperAdminPage({ onOpenNewSeller }) {
   const [stats, setStats] = useState(null);
@@ -17,8 +16,6 @@ export default function SuperAdminPage({ onOpenNewSeller }) {
       setTimeout(() => setCopiedId((prev) => (prev === sellerId ? null : prev)), 1500);
     }).catch(() => {});
   };
-
-  const { switchTargetSeller } = useAuth();
 
   const fetchAdminData = async () => {
     try {
@@ -58,10 +55,22 @@ export default function SuperAdminPage({ onOpenNewSeller }) {
     const newPassword = window.prompt(`Digite a NOVA SENHA para o vendedor "${sellerName}":`, '123456');
     if (newPassword && newPassword.trim()) {
       try {
-        await api.post(`/super-admin/sellers/${sellerId}/reset-password`, { newPassword: newPassword.trim() });
+        await api.put(`/super-admin/sellers/${sellerId}/reset-password`, { new_password: newPassword.trim() });
         alert(`Senha do vendedor "${sellerName}" alterada com sucesso!`);
       } catch (err) {
         alert(err.response?.data?.error || 'Erro ao resetar senha.');
+      }
+    }
+  };
+
+  const handleDeleteSeller = async (sellerId, sellerName) => {
+    if (window.confirm(`Deseja realmente EXCLUIR DEFINITIVAMENTE o vendedor "${sellerName}"?\n\nEsta ação apagará a conta e TODOS os clientes, vendas e dados vinculados a este vendedor. Esta ação não poderá ser desfeita.`)) {
+      try {
+        await api.delete(`/super-admin/sellers/${sellerId}`);
+        alert(`Vendedor "${sellerName}" excluído com sucesso.`);
+        fetchAdminData();
+      } catch (err) {
+        alert(err.response?.data?.error || 'Erro ao excluir vendedor.');
       }
     }
   };
@@ -181,28 +190,35 @@ export default function SuperAdminPage({ onOpenNewSeller }) {
                       </button>
                     )}
 
-                    <div className="flex items-center gap-2 pt-1">
-                      <button
-                        onClick={() => switchTargetSeller(s.id)}
-                        className="flex-1 min-h-[40px] flex items-center justify-center bg-purple-50 dark:bg-purple-500/10 text-purple-700 dark:text-purple-400 rounded-xl text-xs font-bold"
-                      >
-                        Ver Dados
-                      </button>
+                    <div className="flex items-center justify-end gap-2 pt-1">
                       <button
                         onClick={() => handleToggleStatus(s.id, s.status, s.name)}
                         aria-label={isActive ? `Bloquear ${s.name}` : `Ativar ${s.name}`}
-                        className={`w-11 min-h-[40px] flex items-center justify-center rounded-xl ${
+                        title={isActive ? 'Bloquear vendedor' : 'Ativar vendedor'}
+                        className={`px-3 min-h-[40px] flex items-center justify-center gap-1.5 rounded-xl text-xs font-bold ${
                           isActive ? 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400' : 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
                         }`}
                       >
                         {isActive ? <Ban className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
+                        <span>{isActive ? 'Bloquear' : 'Ativar'}</span>
                       </button>
                       <button
                         onClick={() => handleResetPassword(s.id, s.name)}
                         aria-label={`Resetar senha de ${s.name}`}
-                        className="w-11 min-h-[40px] flex items-center justify-center bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl"
+                        title="Resetar senha"
+                        className="px-3 min-h-[40px] flex items-center justify-center gap-1.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold"
                       >
                         <Key className="w-4 h-4" />
+                        <span>Senha</span>
+                      </button>
+                      <button
+                        onClick={() => handleDeleteSeller(s.id, s.name)}
+                        aria-label={`Excluir vendedor ${s.name}`}
+                        title="Excluir vendedor permanentemente"
+                        className="px-3 min-h-[40px] flex items-center justify-center gap-1.5 bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-500/20 rounded-xl text-xs font-bold transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        <span>Excluir</span>
                       </button>
                     </div>
                   </div>
@@ -273,14 +289,6 @@ export default function SuperAdminPage({ onOpenNewSeller }) {
                           {s.total_sales || 0}
                         </td>
                         <td className="p-4 text-right px-6 space-x-2 whitespace-nowrap">
-                          {/* Switch Context Button */}
-                          <button
-                            onClick={() => switchTargetSeller(s.id)}
-                            title="Acessar dados deste vendedor"
-                            className="px-3 py-1.5 bg-purple-50 dark:bg-purple-500/10 hover:bg-purple-100 dark:hover:bg-purple-500/20 text-purple-700 dark:text-purple-400 rounded-xl text-xs font-bold transition-colors"
-                          >
-                            Ver Dados
-                          </button>
                           {/* Toggle Active / Block */}
                           <button
                             onClick={() => handleToggleStatus(s.id, s.status, s.name)}
@@ -300,6 +308,15 @@ export default function SuperAdminPage({ onOpenNewSeller }) {
                             className="p-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl transition-colors"
                           >
                             <Key className="w-4 h-4" />
+                          </button>
+                          {/* Delete Seller */}
+                          <button
+                            onClick={() => handleDeleteSeller(s.id, s.name)}
+                            title="Excluir vendedor permanentemente"
+                            aria-label={`Excluir vendedor ${s.name}`}
+                            className="p-2 bg-rose-50 dark:bg-rose-500/10 hover:bg-rose-100 dark:hover:bg-rose-500/20 text-rose-700 dark:text-rose-400 rounded-xl transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
                           </button>
                         </td>
                       </tr>

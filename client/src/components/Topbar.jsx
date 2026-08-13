@@ -39,26 +39,6 @@ export default function Topbar({ onOpenSidebar }) {
 
       {/* Right controls */}
       <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
-        {/* Super Admin Seller Context Switcher */}
-        {isSuperAdmin && sellersList.length > 0 && (
-          <div className="hidden md:flex items-center gap-2 bg-slate-100 dark:bg-slate-800 p-1.5 px-3 rounded-lg border border-slate-300 dark:border-slate-700 text-xs font-medium text-slate-700 dark:text-slate-300">
-            <UserCheck className="w-4 h-4 text-slate-500 dark:text-slate-400 flex-shrink-0" />
-            <span className="whitespace-nowrap">Visualizando:</span>
-            <select
-              value={activeSellerId || ''}
-              onChange={(e) => switchTargetSeller(e.target.value || null)}
-              aria-label="Selecionar Vendedor para visualizar dados"
-              className="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-blue max-w-[140px] lg:max-w-none"
-            >
-              <option value="">(Minha própria conta)</option>
-              {sellersList.map(seller => (
-                <option key={seller.id} value={seller.id}>
-                  {seller.name} ({seller.phone})
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
 
         <ThemeToggle />
 

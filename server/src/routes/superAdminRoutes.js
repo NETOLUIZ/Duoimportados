@@ -171,10 +171,10 @@ router.put('/sellers/:id/status', async (req, res) => {
 router.put('/sellers/:id/reset-password', async (req, res) => {
   try {
     const sellerId = parseInt(req.params.id);
-    const { new_password } = req.body;
+    const newPassword = req.body.new_password || req.body.newPassword;
 
     if (isNaN(sellerId)) return res.status(400).json({ error: 'ID inválido.' });
-    if (!new_password || new_password.length < 6) {
+    if (!newPassword || newPassword.length < 6) {
       return res.status(400).json({ error: 'A nova senha deve ter no mínimo 6 caracteres.' });
     }
 
@@ -183,7 +183,7 @@ router.put('/sellers/:id/reset-password', async (req, res) => {
       return res.status(404).json({ error: 'Vendedor não encontrado.' });
     }
 
-    const newHash = await bcrypt.hash(new_password, 10);
+    const newHash = await bcrypt.hash(newPassword, 10);
     await query('UPDATE users SET password_hash = ? WHERE id = ?', [newHash, sellerId]);
 
     logSecurityEvent('ADMIN_SELLER_PASSWORD_RESET', {
@@ -195,6 +195,43 @@ router.put('/sellers/:id/reset-password', async (req, res) => {
     return res.json({ message: 'Senha do vendedor redefinida com sucesso!' });
   } catch (err) {
     return res.status(500).json({ error: 'Erro ao redefinir senha.' });
+  }
+});
+
+// DELETE /api/super-admin/sellers/:id - Permanently Delete Seller Account
+router.delete('/sellers/:id', async (req, res) => {
+  try {
+    const sellerId = parseInt(req.params.id);
+    if (isNaN(sellerId)) return res.status(400).json({ error: 'ID inválido.' });
+
+    const seller = await queryOne("SELECT id, name FROM users WHERE id = ? AND role = 'SELLER'", [sellerId]);
+    if (!seller) {
+      return res.status(404).json({ error: 'Vendedor não encontrado.' });
+    }
+
+    // Cascade delete seller data
+    await query('DELETE FROM referral_payments WHERE referrer_id IN (SELECT id FROM referrers WHERE owner_id = ?)', [sellerId]);
+    await query('DELETE FROM referrers WHERE owner_id = ?', [sellerId]);
+    await query('DELETE FROM payments WHERE installment_id IN (SELECT i.id FROM installments i JOIN sales s ON i.sale_id = s.id WHERE s.owner_id = ?)', [sellerId]);
+    await query('DELETE FROM installments WHERE sale_id IN (SELECT id FROM sales WHERE owner_id = ?)', [sellerId]);
+    await query('DELETE FROM sales WHERE owner_id = ?', [sellerId]);
+    await query('DELETE FROM customers WHERE owner_id = ?', [sellerId]);
+    await query('DELETE FROM products WHERE owner_id = ?', [sellerId]);
+    await query('DELETE FROM expenses WHERE owner_id = ?', [sellerId]);
+    await query('DELETE FROM expense_categories WHERE owner_id = ?', [sellerId]);
+    await query('DELETE FROM users WHERE id = ?', [sellerId]);
+
+    logSecurityEvent('ADMIN_SELLER_DELETED', {
+      adminUserId: req.user.userId,
+      sellerId,
+      sellerName: seller.name,
+      ip: req.ip
+    });
+
+    return res.json({ message: `Vendedor "${seller.name}" e seus dados foram excluídos com sucesso.` });
+  } catch (err) {
+    console.error('Error deleting seller:', err);
+    return res.status(500).json({ error: 'Erro ao excluir vendedor.' });
   }
 });
 

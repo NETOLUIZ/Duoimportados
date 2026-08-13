@@ -121,10 +121,14 @@ function ProtectedLayout() {
             <Route
               path="/"
               element={
-                <DashboardPage
-                  onOpenNewSale={() => setIsNewSaleOpen(true)}
-                  onOpenPayment={handleOpenPayment}
-                />
+                user.role === 'SUPER_ADMIN' ? (
+                  <Navigate to="/super-admin" replace />
+                ) : (
+                  <DashboardPage
+                    onOpenNewSale={() => setIsNewSaleOpen(true)}
+                    onOpenPayment={handleOpenPayment}
+                  />
+                )
               }
             />
             <Route
