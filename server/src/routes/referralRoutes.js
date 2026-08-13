@@ -57,7 +57,7 @@ router.get('/', async (req, res) => {
       const config = configByKey[key] || null;
 
       const statsRow = await queryOne(
-        `SELECT COALESCE(SUM(s.total_value), 0) as base_amount
+        `SELECT COALESCE(SUM(s.product_value), 0) as base_amount
          FROM customers c
          JOIN sales s ON s.customer_id = c.id AND s.owner_id = c.owner_id
          WHERE c.owner_id = ? AND LOWER(TRIM(c.referred_by)) = ? AND CAST(s.sale_date AS TEXT) LIKE ?`,
@@ -183,7 +183,7 @@ router.post('/:id/pay', async (req, res) => {
 
     const key = referrer.name.trim().toLowerCase();
     const statsRow = await queryOne(
-      `SELECT COALESCE(SUM(s.total_value), 0) as base_amount
+      `SELECT COALESCE(SUM(s.product_value), 0) as base_amount
        FROM customers c
        JOIN sales s ON s.customer_id = c.id AND s.owner_id = c.owner_id
        WHERE c.owner_id = ? AND LOWER(TRIM(c.referred_by)) = ? AND CAST(s.sale_date AS TEXT) LIKE ?`,
