@@ -25,6 +25,7 @@ import ExpensesPage from './pages/ExpensesPage';
 import ReferralsPage from './pages/ReferralsPage';
 import FinancialPage from './pages/FinancialPage';
 import SuperAdminPage from './pages/SuperAdminPage';
+import AuditLogsPage from './pages/AuditLogsPage';
 
 function ProtectedLayout() {
   const { user, loading } = useAuth();
@@ -166,6 +167,7 @@ function ProtectedLayout() {
             />
             <Route path="/referrals" element={<ReferralsPage />} />
             <Route path="/financial" element={<FinancialPage />} />
+            <Route path="/audit-logs" element={<AuditLogsPage user={user} />} />
             <Route
               path="/settings"
               element={

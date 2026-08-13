@@ -2,8 +2,12 @@ const { z } = require('zod');
 
 // 1. Auth Schemas
 const loginSchema = z.object({
-  phone: z.string().trim().min(8, 'Telefone inválido'),
+  login: z.string().trim().min(2, 'Nome ou Telefone é obrigatório').optional(),
+  phone: z.string().trim().optional(),
   password: z.string().min(4, 'Senha deve ter no mínimo 4 caracteres')
+}).refine(data => data.login || data.phone, {
+  message: 'Informe seu Nome ou Telefone.',
+  path: ['login']
 });
 
 // 2. Customer Schemas

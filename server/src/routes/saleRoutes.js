@@ -6,6 +6,7 @@ const { sanitizeBody } = require('../middleware/securityMiddleware');
 const { saleSchema } = require('../utils/validationSchemas');
 const { parseToCents, centsToDecimalString, splitInstallments } = require('../utils/financialMath');
 const { logSecurityEvent } = require('../utils/logger');
+const { logAudit } = require('../utils/auditLogger');
 
 router.use(verifyAuth);
 router.use(sanitizeBody);
@@ -168,6 +169,12 @@ router.post('/', async (req, res) => {
     }
 
     logSecurityEvent('SALE_CREATED', { ownerId, saleId, totalValue: totalValDecimal, count: installment_count, ip: req.ip });
+    await logAudit(req, 'VENDA_CRIADA', {
+      message: `Venda #${saleId} ("${product_name}") criada no valor de R$ ${totalValDecimal} em ${installment_count}x.`,
+      saleId,
+      productName: product_name,
+      totalValue: totalValDecimal
+    });
 
     return res.status(201).json({
       message: 'Venda registrada e parcelas geradas com sucesso!',
@@ -189,7 +196,7 @@ router.delete('/:id', async (req, res) => {
 
     if (isNaN(saleId)) return res.status(400).json({ error: 'ID inválido.' });
 
-    const existing = await queryOne('SELECT id FROM sales WHERE id = ? AND owner_id = ?', [saleId, ownerId]);
+    const existing = await queryOne('SELECT id, product_name, total_value FROM sales WHERE id = ? AND owner_id = ?', [saleId, ownerId]);
     if (!existing) {
       logSecurityEvent('UNAUTHORIZED_IDOR_SALE_DELETE', { userId: req.user.userId, saleId, ip: req.ip });
       return res.status(404).json({ error: 'Venda não encontrada.' });
@@ -197,6 +204,11 @@ router.delete('/:id', async (req, res) => {
 
     await query('DELETE FROM sales WHERE id = ? AND owner_id = ?', [saleId, ownerId]);
     logSecurityEvent('SALE_DELETED', { ownerId, saleId, ip: req.ip });
+    await logAudit(req, 'VENDA_EXCLUIDA', {
+      message: `Venda #${saleId} ("${existing.product_name}") no valor de R$ ${existing.total_value} foi excluída por ${req.user.name}.`,
+      saleId,
+      productName: existing.product_name
+    });
 
     return res.json({ message: 'Venda e parcelas excluídas com sucesso!' });
   } catch (err) {

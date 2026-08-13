@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Users, Search, Plus, Phone, MapPin, Edit, Trash2, Eye, ShoppingCart, Clock, X, TrendingUp, PiggyBank, Wallet } from 'lucide-react';
 import api from '../services/api';
+import { useAuth } from '../context/AuthContext';
 import { formatBRL, formatDate, formatPhone } from '../utils/formatters';
-import StatusBadge, { InstallmentStatusBadge } from '../components/StatusBadge';
-import { AlertTriangle, CheckCircle2 } from 'lucide-react';
 
 function CustomerSituationBadge({ hasOverdue, hasDebt }) {
   if (hasOverdue) return <StatusBadge tone="danger" label="Em Atraso" icon={AlertTriangle} />;
@@ -12,6 +11,7 @@ function CustomerSituationBadge({ hasOverdue, hasDebt }) {
 }
 
 export default function CustomersPage({ onOpenNewCustomer, onEditCustomer }) {
+  const { user } = useAuth();
   const [customers, setCustomers] = useState([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
@@ -241,14 +241,16 @@ export default function CustomersPage({ onOpenNewCustomer, onEditCustomer }) {
                           >
                             <Edit className="w-4 h-4" />
                           </button>
-                          <button
-                            onClick={() => handleDelete(c.id, c.name)}
-                            title="Excluir cliente"
-                            aria-label={`Excluir cliente ${c.name}`}
-                            className="p-2 bg-rose-50 dark:bg-rose-500/10 hover:bg-rose-100 dark:hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 rounded-xl transition-colors"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          {user?.role !== 'OPERATOR' && (
+                            <button
+                              onClick={() => handleDelete(c.id, c.name)}
+                              title="Excluir cliente"
+                              aria-label={`Excluir cliente ${c.name}`}
+                              className="p-2 bg-rose-50 dark:bg-rose-500/10 hover:bg-rose-100 dark:hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 rounded-xl transition-colors"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
                         </td>
                       </tr>
                     );

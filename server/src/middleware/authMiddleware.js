@@ -24,9 +24,8 @@ function verifyAuth(req, res, next) {
     req.user = decoded;
     
     // Strict Owner Scope:
-    // If user is SUPER_ADMIN and impersonating/viewing a seller via query param or header, handle safely,
-    // otherwise req.ownerId is ALWAYS req.user.userId
-    req.ownerId = decoded.userId;
+    // If user is sub-user/operator, ownerId is decoded.ownerId, otherwise user's own userId
+    req.ownerId = decoded.ownerId || decoded.userId;
 
     next();
   } catch (err) {

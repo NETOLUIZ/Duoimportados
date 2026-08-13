@@ -80,19 +80,18 @@ export default function LoginPage() {
 
           <form onSubmit={handleLoginSubmit} className="space-y-4">
             <div>
-              <label htmlFor="login-phone" className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5 flex items-center gap-1.5">
-                <Phone className="w-4 h-4 text-brand-blue" />
-                Telefone (Login)
+              <label htmlFor="login-identifier" className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5 flex items-center gap-1.5">
+                <User className="w-4 h-4 text-brand-blue" />
+                Nome ou Telefone
               </label>
               <input
-                id="login-phone"
-                type="tel"
-                inputMode="tel"
+                id="login-identifier"
+                type="text"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                placeholder="Ex: 11988881111"
+                placeholder="Ex: Maria ou (88) 99999-9999"
                 required
-                className="w-full bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-xl p-3.5 min-h-[48px] font-mono font-semibold focus:ring-2 focus:ring-brand-blue focus:bg-white focus:outline-none"
+                className="w-full bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-xl p-3.5 min-h-[48px] font-semibold focus:ring-2 focus:ring-brand-blue focus:bg-white focus:outline-none"
               />
             </div>
 

@@ -17,6 +17,7 @@ const dashboardRoutes = require('./routes/dashboardRoutes');
 const financialRoutes = require('./routes/financialRoutes');
 const superAdminRoutes = require('./routes/superAdminRoutes');
 const referralRoutes = require('./routes/referralRoutes');
+const auditRoutes = require('./routes/auditRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -72,6 +73,7 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/financial', financialRoutes);
 app.use('/api/super-admin', superAdminRoutes);
 app.use('/api/referrals', referralRoutes);
+app.use('/api/audit-logs', auditRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

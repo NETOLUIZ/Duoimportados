@@ -33,6 +33,7 @@ export default function Sidebar({ isOpen, onClose, onOpenNewSale }) {
         { label: 'Despesas', path: '/expenses', icon: DollarSign },
         { label: 'Indicações', path: '/referrals', icon: Handshake },
         { label: 'Financeiro', path: '/financial', icon: TrendingUp },
+        { label: 'Auditoria & Equipe', path: '/audit-logs', icon: ShieldCheck },
         { label: 'Configurações', path: '/settings', icon: Settings },
       ];
 
