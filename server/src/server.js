@@ -34,13 +34,17 @@ const allowedOrigins = [
   'http://localhost:3000',
   'http://127.0.0.1:3000',
   'http://localhost:3001',
-  'http://127.0.0.1:3001'
+  'http://127.0.0.1:3001',
+  'https://duoimportados.com.br',
+  'https://www.duoimportados.com.br',
+  'http://duoimportados.com.br',
+  'http://www.duoimportados.com.br'
 ];
 
 app.use(
   cors({
     origin: function (origin, callback) {
-      if (!origin || allowedOrigins.includes(origin)) {
+      if (!origin || allowedOrigins.includes(origin) || origin.includes('duoimportados.com.br')) {
         callback(null, true);
       } else {
         callback(new Error('Bloqueado por política CORS'));
@@ -91,7 +95,9 @@ app.get('*', (req, res) => {
 // Global Error Handler - Never leak stack traces to client
 app.use((err, req, res, next) => {
   console.error('[SERVER ERROR]', err);
-  res.status(500).json({ error: 'Erro interno no servidor.' });
+  const status = err.statusCode || err.status || 500;
+  const message = status === 500 ? 'Erro interno no servidor.' : err.message;
+  res.status(status).json({ error: message });
 });
 
 // Start database and server

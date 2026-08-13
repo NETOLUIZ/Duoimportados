@@ -121,63 +121,6 @@ export default function LoginPage() {
               <ArrowRight className="w-5 h-5" />
             </button>
           </form>
-
-          {/* Quick Demo Accounts Selection */}
-          <div className="mt-8 pt-6 border-t border-slate-100">
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 text-center">
-              Acesso Rápido de Demonstração
-            </p>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => handleQuickLogin('11988881111', '123456')}
-                className="p-2.5 min-h-[52px] bg-slate-50 hover:bg-slate-100 active:bg-slate-100 border border-slate-200 rounded-xl text-left transition-colors"
-              >
-                <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
-                  <User className="w-3.5 h-3.5 text-brand-blue" />
-                  Vendedor A
-                </div>
-                <div className="text-[11px] text-slate-500 font-mono">11988881111</div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleQuickLogin('11988882222', '123456')}
-                className="p-2.5 min-h-[52px] bg-slate-50 hover:bg-slate-100 active:bg-slate-100 border border-slate-200 rounded-xl text-left transition-colors"
-              >
-                <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
-                  <User className="w-3.5 h-3.5 text-emerald-600" />
-                  Vendedor B
-                </div>
-                <div className="text-[11px] text-slate-500 font-mono">11988882222</div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleQuickLogin('11988883333', '123456')}
-                className="p-2.5 min-h-[52px] bg-slate-50 hover:bg-slate-100 active:bg-slate-100 border border-slate-200 rounded-xl text-left transition-colors"
-              >
-                <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
-                  <User className="w-3.5 h-3.5 text-amber-600" />
-                  Vendedor C
-                </div>
-                <div className="text-[11px] text-slate-500 font-mono">11988883333</div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleQuickLogin('11999990000', '123456')}
-                className="p-2.5 min-h-[52px] bg-purple-50 hover:bg-purple-100 active:bg-purple-100 border border-purple-200 rounded-xl text-left transition-colors"
-              >
-                <div className="flex items-center gap-1.5 text-xs font-bold text-purple-900">
-                  <ShieldCheck className="w-3.5 h-3.5 text-purple-700" />
-                  Super Admin
-                </div>
-                <div className="text-[11px] text-purple-700 font-mono">11999990000</div>
-              </button>
-            </div>
-            <p className="text-[11px] text-slate-400 text-center mt-3">Senha padrão: <span className="font-mono font-bold">123456</span></p>
-          </div>
         </div>
       </div>
     </div>

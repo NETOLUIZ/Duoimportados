@@ -117,7 +117,7 @@ router.put('/config', async (req, res) => {
     const key = name.toLowerCase();
 
     const existing = await queryOne(
-      `SELECT id FROM referrers WHERE owner_id = ? AND LOWER(TRIM(name)) = ?`,
+      `SELECT * FROM referrers WHERE owner_id = ? AND LOWER(TRIM(name)) = ?`,
       [ownerId, key]
     );
 
@@ -126,6 +126,14 @@ router.put('/config', async (req, res) => {
         `UPDATE referrers SET commission_type = ?, commission_value = ? WHERE id = ? AND owner_id = ?`,
         [commission_type, commission_value, existing.id, ownerId]
       );
+      logSecurityEvent('REFERRAL_CONFIG_UPDATED', {
+        ownerId,
+        referrerId: existing.id,
+        editedBy: req.user.userId,
+        before: { commission_type: existing.commission_type, commission_value: existing.commission_value },
+        after: { commission_type, commission_value },
+        ip: req.ip
+      });
       return res.json({ message: 'Comissão de indicação atualizada!', id: existing.id });
     }
 
@@ -133,6 +141,15 @@ router.put('/config', async (req, res) => {
       `INSERT INTO referrers (owner_id, name, commission_type, commission_value) VALUES (?, ?, ?, ?)`,
       [ownerId, name, commission_type, commission_value]
     );
+
+    logSecurityEvent('REFERRAL_CONFIG_CREATED', {
+      ownerId,
+      referrerId: result[0]?.id,
+      name,
+      commission_type,
+      commission_value,
+      ip: req.ip
+    });
 
     return res.status(201).json({ message: 'Indicador configurado com sucesso!', id: result[0]?.id });
   } catch (err) {

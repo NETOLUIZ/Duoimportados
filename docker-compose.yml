@@ -9,7 +9,7 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: controlevendas
     ports:
-      - "5432:5432"
+      - "5435:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -26,7 +26,7 @@ services:
     container_name: controlevendas_backend
     restart: always
     ports:
-      - "3001:3001"
+      - "3095:3001"
     environment:
       PORT: 3001
       DATABASE_URL: postgresql://postgres:postgres@db:5432/controlevendas
@@ -43,7 +43,7 @@ services:
     container_name: controlevendas_frontend
     restart: always
     ports:
-      - "3000:3000"
+      - "3098:3000"
     depends_on:
       - backend
 

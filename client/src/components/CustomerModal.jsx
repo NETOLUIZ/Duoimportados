@@ -239,33 +239,17 @@ export default function CustomerModal({ isOpen, customer, onClose, onSuccess }) 
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="customer-city" className={labelClass}>Cidade (Opcional)</label>
-              <input
-                id="customer-city"
-                type="text"
-                name="city"
-                value={formData.city}
-                onChange={handleChange}
-                placeholder="São Paulo"
-                className={inputClass}
-              />
-            </div>
-
-            <div>
-              <label htmlFor="customer-state" className={labelClass}>Estado (UF) (Opcional)</label>
-              <input
-                id="customer-state"
-                type="text"
-                name="state"
-                value={formData.state}
-                onChange={handleChange}
-                placeholder="SP"
-                maxLength="2"
-                className={`${inputClass} font-semibold uppercase`}
-              />
-            </div>
+          <div>
+            <label htmlFor="customer-city" className={labelClass}>Cidade (Opcional)</label>
+            <input
+              id="customer-city"
+              type="text"
+              name="city"
+              value={formData.city}
+              onChange={handleChange}
+              placeholder="São Paulo"
+              className={inputClass}
+            />
           </div>
 
           <div>
@@ -282,19 +266,6 @@ export default function CustomerModal({ isOpen, customer, onClose, onSuccess }) 
               placeholder="Quem indicou este cliente?"
               className={inputClass}
             />
-          </div>
-
-          <div>
-            <label htmlFor="customer-notes" className={labelClass}>Observações (Opcional)</label>
-            <textarea
-              id="customer-notes"
-              name="notes"
-              value={formData.notes}
-              onChange={handleChange}
-              rows="2"
-              placeholder="Anotações gerais sobre o cliente..."
-              className={inputClass}
-            ></textarea>
           </div>
         </form>
 

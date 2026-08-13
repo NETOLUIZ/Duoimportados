@@ -156,13 +156,18 @@ router.put('/:id', async (req, res) => {
       return res.status(400).json({ error: parseResult.error.errors[0]?.message || 'Dados inválidos.' });
     }
 
-    const existing = await queryOne('SELECT id FROM customers WHERE id = ? AND owner_id = ?', [customerId, ownerId]);
+    const existing = await queryOne('SELECT * FROM customers WHERE id = ? AND owner_id = ?', [customerId, ownerId]);
     if (!existing) {
       logSecurityEvent('UNAUTHORIZED_IDOR_CUSTOMER_EDIT', { userId: req.user.userId, customerId, ip: req.ip });
       return res.status(404).json({ error: 'Cliente não encontrado.' });
     }
 
     const { name, phone, cep, address, number, complement, neighborhood, city, state, referred_by, notes } = parseResult.data;
+    const nextValues = {
+      name, phone: phone || null, cep: cep || null, address: address || null, number: number || null,
+      complement: complement || null, neighborhood: neighborhood || null, city: city || null,
+      state: state || null, referred_by: referred_by || null, notes: notes || null
+    };
 
     await query(
       `UPDATE customers SET
@@ -170,21 +175,24 @@ router.put('/:id', async (req, res) => {
         complement = ?, neighborhood = ?, city = ?, state = ?, referred_by = ?, notes = ?
        WHERE id = ? AND owner_id = ?`,
       [
-        name,
-        phone || null,
-        cep || null,
-        address || null,
-        number || null,
-        complement || null,
-        neighborhood || null,
-        city || null,
-        state || null,
-        referred_by || null,
-        notes || null,
+        nextValues.name, nextValues.phone, nextValues.cep, nextValues.address, nextValues.number,
+        nextValues.complement, nextValues.neighborhood, nextValues.city, nextValues.state,
+        nextValues.referred_by, nextValues.notes,
         customerId,
         ownerId
       ]
     );
+
+    const changedFields = Object.keys(nextValues).filter((key) => String(existing[key] ?? '') !== String(nextValues[key] ?? ''));
+    logSecurityEvent('CUSTOMER_UPDATED', {
+      ownerId,
+      customerId,
+      editedBy: req.user.userId,
+      changedFields,
+      before: Object.fromEntries(changedFields.map((k) => [k, existing[k]])),
+      after: Object.fromEntries(changedFields.map((k) => [k, nextValues[k]])),
+      ip: req.ip
+    });
 
     return res.json({ message: 'Cliente atualizado com sucesso!' });
   } catch (err) {

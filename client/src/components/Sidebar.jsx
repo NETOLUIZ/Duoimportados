@@ -20,16 +20,21 @@ export default function Sidebar({ isOpen, onClose, onOpenNewSale }) {
   const { user, isSuperAdmin } = useAuth();
   const location = useLocation();
 
-  const menuItems = [
-    { label: 'Início', path: '/', icon: Home },
-    { label: 'Clientes', path: '/customers', icon: Users },
-    { label: 'Vendas', path: '/sales', icon: ShoppingCart },
-    { label: 'Recebimentos', path: '/installments', icon: CreditCard },
-    { label: 'Despesas', path: '/expenses', icon: DollarSign },
-    { label: 'Indicações', path: '/referrals', icon: Handshake },
-    { label: 'Financeiro', path: '/financial', icon: TrendingUp },
-    { label: 'Configurações', path: '/settings', icon: Settings },
-  ];
+  const menuItems = isSuperAdmin
+    ? [
+        { label: 'Gestão de Vendedores', path: '/super-admin', icon: ShieldCheck },
+        { label: 'Configurações', path: '/settings', icon: Settings },
+      ]
+    : [
+        { label: 'Início', path: '/', icon: Home },
+        { label: 'Clientes', path: '/customers', icon: Users },
+        { label: 'Vendas', path: '/sales', icon: ShoppingCart },
+        { label: 'Recebimentos', path: '/installments', icon: CreditCard },
+        { label: 'Despesas', path: '/expenses', icon: DollarSign },
+        { label: 'Indicações', path: '/referrals', icon: Handshake },
+        { label: 'Financeiro', path: '/financial', icon: TrendingUp },
+        { label: 'Configurações', path: '/settings', icon: Settings },
+      ];
 
   const handleNavigate = () => {
     onClose?.();
@@ -58,7 +63,9 @@ export default function Sidebar({ isOpen, onClose, onOpenNewSale }) {
           </div>
           <div className="min-w-0 flex-1">
             <h1 className="font-bold text-base tracking-wide text-white leading-tight truncate">Imports</h1>
-            <p className="text-xs text-slate-400 font-medium">Gestão de Vendas</p>
+            <p className="text-xs text-slate-400 font-medium">
+              {isSuperAdmin ? 'Painel Administrativo' : 'Gestão de Vendas'}
+            </p>
           </div>
           <button
             onClick={onClose}
@@ -69,22 +76,24 @@ export default function Sidebar({ isOpen, onClose, onOpenNewSale }) {
           </button>
         </div>
 
-        {/* Prominent Quick Action Button: + NOVA VENDA */}
-        <div className="p-4">
-          <button
-            onClick={() => {
-              onOpenNewSale();
-              onClose?.();
-            }}
-            className="w-full bg-brand-blue hover:bg-brand-blueHover text-white font-semibold py-3 px-4 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-blue-900/40 hover:shadow-blue-900/60 transition-all duration-200 text-sm tracking-wide transform hover:-translate-y-0.5 active:translate-y-0"
-          >
-            <Plus className="w-5 h-5 stroke-[2.5]" />
-            <span>NOVA VENDA</span>
-          </button>
-        </div>
+        {/* Prominent Quick Action Button for Sellers */}
+        {!isSuperAdmin && (
+          <div className="p-4">
+            <button
+              onClick={() => {
+                onOpenNewSale();
+                onClose?.();
+              }}
+              className="w-full bg-brand-blue hover:bg-brand-blueHover text-white font-semibold py-3 px-4 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-blue-900/40 hover:shadow-blue-900/60 transition-all duration-200 text-sm tracking-wide transform hover:-translate-y-0.5 active:translate-y-0"
+            >
+              <Plus className="w-5 h-5 stroke-[2.5]" />
+              <span>NOVA VENDA</span>
+            </button>
+          </div>
+        )}
 
         {/* Navigation Links */}
-        <nav className="flex-1 px-3 py-2 space-y-1 overflow-y-auto">
+        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
           {menuItems.map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.path;
@@ -96,7 +105,9 @@ export default function Sidebar({ isOpen, onClose, onOpenNewSale }) {
                 onClick={handleNavigate}
                 className={`flex items-center gap-3.5 px-4 py-3 rounded-xl text-sm font-medium transition-all min-h-[44px] ${
                   isActive
-                    ? 'bg-brand-blue text-white shadow-md shadow-blue-950 font-semibold'
+                    ? isSuperAdmin
+                      ? 'bg-purple-600 text-white shadow-md font-semibold'
+                      : 'bg-brand-blue text-white shadow-md shadow-blue-950 font-semibold'
                     : 'text-slate-300 hover:bg-navy-800 hover:text-white'
                 }`}
               >
@@ -105,27 +116,6 @@ export default function Sidebar({ isOpen, onClose, onOpenNewSale }) {
               </NavLink>
             );
           })}
-
-          {/* Super Admin Menu item */}
-          {isSuperAdmin && (
-            <div className="pt-4 mt-4 border-t border-navy-800">
-              <div className="px-4 text-[11px] font-semibold tracking-wider text-slate-400 uppercase mb-2">
-                Administração
-              </div>
-              <NavLink
-                to="/super-admin"
-                onClick={handleNavigate}
-                className={`flex items-center gap-3.5 px-4 py-3 rounded-xl text-sm font-medium transition-all min-h-[44px] ${
-                  location.pathname === '/super-admin'
-                    ? 'bg-purple-600 text-white shadow-md font-semibold'
-                    : 'text-purple-300 hover:bg-navy-800 hover:text-purple-100'
-                }`}
-              >
-                <ShieldCheck className="w-5 h-5 text-purple-300 flex-shrink-0" />
-                <span>Super Admin</span>
-              </NavLink>
-            </div>
-          )}
         </nav>
 
         {/* User Footer */}
