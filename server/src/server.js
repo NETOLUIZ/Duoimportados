@@ -95,7 +95,9 @@ app.get('*', (req, res) => {
 // Global Error Handler - Never leak stack traces to client
 app.use((err, req, res, next) => {
   console.error('[SERVER ERROR]', err);
-  res.status(500).json({ error: 'Erro interno no servidor.' });
+  const status = err.statusCode || err.status || 500;
+  const message = status === 500 ? 'Erro interno no servidor.' : err.message;
+  res.status(status).json({ error: message });
 });
 
 // Start database and server
