@@ -19,12 +19,20 @@ router.get('/', async (req, res) => {
 
     let sql = `
       SELECT c.*, 
-        COALESCE(SUM(CASE WHEN i.status IN ('PENDENTE', 'VENCENDO', 'ATRASADA') THEN (i.amount - i.amount_paid) ELSE 0 END), 0) as total_debt,
-        COUNT(DISTINCT s.id) as total_sales,
-        SUM(CASE WHEN i.status = 'ATRASADA' THEN 1 ELSE 0 END) as overdue_count
+        COALESCE(
+          (SELECT SUM(i.amount - i.amount_paid) 
+           FROM installments i 
+           WHERE i.customer_id = c.id AND i.owner_id = c.owner_id AND i.status IN ('PENDENTE', 'VENCENDO', 'ATRASADA')
+          ), 0
+        ) as total_debt,
+        (SELECT COUNT(*) FROM sales s WHERE s.customer_id = c.id AND s.owner_id = c.owner_id) as total_sales,
+        COALESCE(
+          (SELECT COUNT(*) 
+           FROM installments i 
+           WHERE i.customer_id = c.id AND i.owner_id = c.owner_id AND i.status = 'ATRASADA'
+          ), 0
+        ) as overdue_count
       FROM customers c
-      LEFT JOIN sales s ON s.customer_id = c.id AND s.owner_id = c.owner_id
-      LEFT JOIN installments i ON i.customer_id = c.id AND i.owner_id = c.owner_id
       WHERE c.owner_id = ?
     `;
 
@@ -36,7 +44,7 @@ router.get('/', async (req, res) => {
       params.push(term, term, term);
     }
 
-    sql += ` GROUP BY c.id ORDER BY c.name ASC`;
+    sql += ` ORDER BY c.name ASC`;
 
     const customers = await query(sql, params);
     return res.json(customers);
