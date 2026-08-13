@@ -52,9 +52,13 @@ router.get('/overview', async (req, res) => {
 
     const { startDate, endDate } = getDateRange(period, reqStart, reqEnd);
 
-    // Sales in period
+    // Sales in period (product_value, interest_value, total_value)
     const salesRes = await queryOne(
-      `SELECT COALESCE(SUM(total_value), 0) as total FROM sales 
+      `SELECT 
+         COALESCE(SUM(product_value), 0) as total_products,
+         COALESCE(SUM(interest_value), 0) as total_interest,
+         COALESCE(SUM(total_value), 0) as total 
+       FROM sales 
        WHERE owner_id = ? AND CAST(sale_date AS TEXT) >= ? AND CAST(sale_date AS TEXT) <= ?`,
       [ownerId, startDate, endDate]
     );
@@ -66,11 +70,11 @@ router.get('/overview', async (req, res) => {
       [ownerId, startDate, endDate]
     );
 
-    // Installments to receive (due in period and not paid)
+    // Installments to receive TOTAL (all pending balance across all customers)
     const toReceiveRes = await queryOne(
       `SELECT COALESCE(SUM(amount - amount_paid), 0) as total FROM installments 
-       WHERE owner_id = ? AND status != 'PAGA' AND CAST(due_date AS TEXT) >= ? AND CAST(due_date AS TEXT) <= ?`,
-      [ownerId, startDate, endDate]
+       WHERE owner_id = ? AND status != 'PAGA'`,
+      [ownerId]
     );
 
     // Expenses in period
@@ -89,13 +93,19 @@ router.get('/overview', async (req, res) => {
     );
 
     const vendasCents = parseToCents(salesRes?.total);
+    const vendasProdutosCents = parseToCents(salesRes?.total_products);
+    const vendasJurosCents = parseToCents(salesRes?.total_interest);
+    
     const recebidoCents = parseToCents(paymentsRes?.total);
     const aReceberCents = parseToCents(toReceiveRes?.total);
     const despesasCents = parseToCents(expensesRes?.total);
     const atrasadoCents = parseToCents(overdueRes?.total);
 
     const lucroRealizadoCents = recebidoCents - despesasCents;
-    const lucroPrevistoCents = (recebidoCents + aReceberCents) - despesasCents;
+    // Lucro em juros limpo no período
+    const jurosLimposCents = vendasJurosCents;
+    // Lucro apurado (Juros Limpos - Despesas)
+    const lucroLiquidoApuradoCents = jurosLimposCents - despesasCents;
 
     // Build Receitas vs Despesas comparison timeline chart data
     // Fetch daily received vs expenses in date range
@@ -136,11 +146,14 @@ router.get('/overview', async (req, res) => {
       endDate,
       summary: {
         vendas: centsToDecimalString(vendasCents),
+        vendas_produtos: centsToDecimalString(vendasProdutosCents),
+        vendas_juros: centsToDecimalString(vendasJurosCents),
         recebido: centsToDecimalString(recebidoCents),
         a_receber: centsToDecimalString(aReceberCents),
         despesas: centsToDecimalString(despesasCents),
         lucro_realizado: centsToDecimalString(lucroRealizadoCents),
-        lucro_previsto: centsToDecimalString(lucroPrevistoCents),
+        juros_limpos: centsToDecimalString(jurosLimposCents),
+        lucro_liquido_apurado: centsToDecimalString(lucroLiquidoApuradoCents),
         valores_atrasados: centsToDecimalString(atrasadoCents)
       },
       chartData
