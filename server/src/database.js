@@ -31,14 +31,35 @@ function saveDbToDisk() {
   }
 }
 
-async function query(sql, params = []) {
+async function query(sql, params = [], sessionContext = null) {
   if (isPgConnected && pool) {
+    let client = null;
     try {
       let paramIndex = 1;
       const pgSql = sql.replace(/\?/g, () => `$${paramIndex++}`);
-      const res = await pool.query(pgSql, params);
-      return res.rows;
+
+      if (sessionContext && (sessionContext.ownerId || sessionContext.role)) {
+        client = await pool.connect();
+        await client.query('BEGIN');
+        if (sessionContext.ownerId) {
+          await client.query(`SET LOCAL app.current_owner_id = '${sessionContext.ownerId}'`);
+        }
+        if (sessionContext.role) {
+          await client.query(`SET LOCAL app.current_user_role = '${sessionContext.role}'`);
+        }
+        const res = await client.query(pgSql, params);
+        await client.query('COMMIT');
+        client.release();
+        return res.rows;
+      } else {
+        const res = await pool.query(pgSql, params);
+        return res.rows;
+      }
     } catch (err) {
+      if (client) {
+        try { await client.query('ROLLBACK'); } catch (_) {}
+        client.release();
+      }
       if (err.code === 'ECONNREFUSED' || err.message.includes('connect')) {
         console.warn('[DB] PostgreSQL connection refused, falling back to SQLite file DB.');
         isPgConnected = false;
@@ -81,8 +102,8 @@ function querySqlite(sql, params = []) {
   }
 }
 
-async function queryOne(sql, params = []) {
-  const rows = await query(sql, params);
+async function queryOne(sql, params = [], sessionContext = null) {
+  const rows = await query(sql, params, sessionContext);
   return rows[0] || null;
 }
 
@@ -301,109 +322,103 @@ async function initDatabase() {
     )
   `);
 
-  await seedInitialData();
+  await setupPostgresRLS();
+  await clearDemoData();
+}
+
+async function setupPostgresRLS() {
+  if (!isPgConnected) return;
+
+  console.log('[DB RLS] Initializing PostgreSQL Row-Level Security (RLS)...');
+  const rlsTables = [
+    'customers',
+    'products',
+    'sales',
+    'installments',
+    'payments',
+    'expense_categories',
+    'expenses',
+    'referrers',
+    'referral_payments'
+  ];
+
+  for (const table of rlsTables) {
+    try {
+      await query(`ALTER TABLE ${table} ENABLE ROW LEVEL SECURITY;`);
+      await query(`ALTER TABLE ${table} FORCE ROW LEVEL SECURITY;`);
+      await query(`DROP POLICY IF EXISTS ${table}_tenant_policy ON ${table};`);
+      await query(`
+        CREATE POLICY ${table}_tenant_policy ON ${table}
+        FOR ALL
+        USING (
+          NULLIF(current_setting('app.current_user_role', true), '') = 'SUPER_ADMIN'
+          OR owner_id = NULLIF(current_setting('app.current_owner_id', true), '')::INT
+        );
+      `);
+    } catch (err) {
+      console.warn(`[DB RLS Warning] Table ${table} RLS notice:`, err.message);
+    }
+  }
+
+  try {
+    await query(`ALTER TABLE users ENABLE ROW LEVEL SECURITY;`);
+    await query(`ALTER TABLE users FORCE ROW LEVEL SECURITY;`);
+    await query(`DROP POLICY IF EXISTS users_tenant_policy ON users;`);
+    await query(`
+      CREATE POLICY users_tenant_policy ON users
+      FOR ALL
+      USING (
+        NULLIF(current_setting('app.current_user_role', true), '') = 'SUPER_ADMIN'
+        OR id = NULLIF(current_setting('app.current_owner_id', true), '')::INT
+      );
+    `);
+  } catch (err) {
+    console.warn(`[DB RLS Warning] Table users RLS notice:`, err.message);
+  }
+
+  console.log('[DB RLS] Row-Level Security (RLS) policies successfully activated!');
 }
 
 async function seedInitialData() {
-  const existingUsers = await query('SELECT COUNT(*) as count FROM users');
-  const count = parseInt(existingUsers[0]?.count || 0);
+  const existingSuperAdmin = await query("SELECT * FROM users WHERE role = 'SUPER_ADMIN'");
 
-  if (count === 0) {
-    console.log('[DB] Seeding default accounts (Super Admin + 3 Sellers)...');
-    const defaultPasswordHash = await bcrypt.hash('123456', 10);
+  if (existingSuperAdmin.length === 0) {
+    console.log('[DB] Seeding production Super Admin account...');
+    const defaultPasswordHash = await bcrypt.hash('DuoAdmin#2026', 10);
 
-    // 1. Super Admin
     await query(
       `INSERT INTO users (name, phone, password_hash, role, status) VALUES (?, ?, ?, 'SUPER_ADMIN', 'ACTIVE')`,
       ['Super Admin', '11999990000', defaultPasswordHash]
     );
+    console.log('[DB] Production Super Admin account created!');
+  }
+}
 
-    // 2. Sellers (Vendedor A, Vendedor B, Vendedor C)
-    const sA = await query(
-      `INSERT INTO users (name, phone, password_hash, role, status) VALUES (?, ?, ?, 'SELLER', 'ACTIVE')`,
-      ['Vendedor A', '11988881111', defaultPasswordHash]
-    );
-    const sB = await query(
-      `INSERT INTO users (name, phone, password_hash, role, status) VALUES (?, ?, ?, 'SELLER', 'ACTIVE')`,
-      ['Vendedor B', '11988882222', defaultPasswordHash]
-    );
-    await query(
-      `INSERT INTO users (name, phone, password_hash, role, status) VALUES (?, ?, ?, 'SELLER', 'ACTIVE')`,
-      ['Vendedor C', '11988883333', defaultPasswordHash]
-    );
-
-    const sellerAId = sA[0]?.id || 2;
-    const sellerBId = sB[0]?.id || 3;
-
-    // Seed Categories
-    const categories = ['Compra de mercadoria', 'Combustível', 'Internet', 'Embalagem', 'Transporte', 'Aluguel'];
-    for (const cat of categories) {
-      await query(`INSERT INTO expense_categories (owner_id, name) VALUES (?, ?)`, [sellerAId, cat]);
-      await query(`INSERT INTO expense_categories (owner_id, name) VALUES (?, ?)`, [sellerBId, cat]);
+async function clearDemoData() {
+  console.log('[DB] Cleaning all demo data...');
+  try {
+    await query('DELETE FROM referral_payments');
+    await query('DELETE FROM referrers');
+    await query('DELETE FROM expenses');
+    await query('DELETE FROM expense_categories');
+    await query('DELETE FROM payments');
+    await query('DELETE FROM installments');
+    await query('DELETE FROM sales');
+    await query('DELETE FROM products');
+    await query('DELETE FROM customers');
+    await query("DELETE FROM users WHERE role != 'SUPER_ADMIN'");
+    
+    // Ensure Super Admin exists
+    const superAdmin = await queryOne("SELECT * FROM users WHERE role = 'SUPER_ADMIN'");
+    if (!superAdmin) {
+      await seedInitialData();
+    } else {
+      const defaultPasswordHash = await bcrypt.hash('DuoAdmin#2026', 10);
+      await query("UPDATE users SET password_hash = ? WHERE id = ?", [defaultPasswordHash, superAdmin.id]);
     }
-
-    // Seed Demo Customers for Seller A
-    const c1 = await query(
-      `INSERT INTO customers (owner_id, name, phone, city, state, neighborhood, address, number) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [sellerAId, 'Carlos Eduardo Silva', '11977771010', 'São Paulo', 'SP', 'Centro', 'Rua das Flores', '123']
-    );
-    const c2 = await query(
-      `INSERT INTO customers (owner_id, name, phone, city, state, neighborhood, address, number) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [sellerAId, 'Mariana Oliveira', '11977772020', 'Guarulhos', 'SP', 'Vila Nova', 'Av. Brasil', '450']
-    );
-    const c3 = await query(
-      `INSERT INTO customers (owner_id, name, phone, city, state, neighborhood, address, number) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [sellerAId, 'Roberto Santos', '11977773030', 'Osasco', 'SP', 'Jardim das Rosas', 'Rua Bela Vista', '88']
-    );
-
-    const c1Id = c1[0]?.id || 1;
-    const c2Id = c2[0]?.id || 2;
-    const c3Id = c3[0]?.id || 3;
-
-    const dateStr = new Date().toISOString().split('T')[0];
-
-    // Seed Sale & Installments for Seller A
-    const sale1 = await query(
-      `INSERT INTO sales (owner_id, customer_id, product_name, sale_date, product_value, interest_value, total_value, payment_mode, installment_count, first_due_date, late_fee_percent_per_day) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [sellerAId, c1Id, 'iPhone 15 Pro Max 256GB', dateStr, '7500.00', '500.00', '8000.00', 'MENSAL', 4, '2026-07-10', '1.00']
-    );
-    const s1Id = sale1[0]?.id || 1;
-
-    // Installments
-    await query(
-      `INSERT INTO installments (owner_id, sale_id, customer_id, installment_number, amount, due_date, status, amount_paid, paid_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [sellerAId, s1Id, c1Id, 1, '2000.00', '2026-07-10', 'PAGA', '2000.00', '2026-07-10']
-    );
-    await query(
-      `INSERT INTO installments (owner_id, sale_id, customer_id, installment_number, amount, due_date, status, amount_paid) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [sellerAId, s1Id, c1Id, 2, '2000.00', '2026-08-10', 'ATRASADA', '0.00']
-    );
-    await query(
-      `INSERT INTO installments (owner_id, sale_id, customer_id, installment_number, amount, due_date, status, amount_paid) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [sellerAId, s1Id, c1Id, 3, '2000.00', '2026-09-10', 'PENDENTE', '0.00']
-    );
-    await query(
-      `INSERT INTO installments (owner_id, sale_id, customer_id, installment_number, amount, due_date, status, amount_paid) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [sellerAId, s1Id, c1Id, 4, '2000.00', '2026-10-10', 'PENDENTE', '0.00']
-    );
-
-    // Payment for P1
-    await query(
-      `INSERT INTO payments (owner_id, installment_id, customer_id, amount_paid, payment_date, registered_by_user_id, notes) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [sellerAId, 1, c1Id, '2000.00', '2026-07-10', sellerAId, 'Pagamento via PIX']
-    );
-
-    // Expenses for Seller A
-    await query(
-      `INSERT INTO expenses (owner_id, category_name, name, amount, expense_date, notes) VALUES (?, ?, ?, ?, ?, ?)`,
-      [sellerAId, 'Compra de mercadoria', 'Lote de iPhones importados', '4500.00', dateStr, 'Fornecedor Miami']
-    );
-    await query(
-      `INSERT INTO expenses (owner_id, category_name, name, amount, expense_date, notes) VALUES (?, ?, ?, ?, ?, ?)`,
-      [sellerAId, 'Combustível', 'Gasolina para entregas', '150.00', dateStr, 'Posto Shell']
-    );
-
-    console.log('[DB] Persistent seed data initialized!');
+    console.log('[DB] All demo data removed successfully!');
+  } catch (err) {
+    console.error('[DB Error] Error cleaning demo data:', err);
   }
 }
 
