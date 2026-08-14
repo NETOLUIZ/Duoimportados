@@ -233,7 +233,7 @@ export default function ReferralsPage() {
                   {/* Stats + pay action */}
                   <div className="flex items-center justify-between lg:ml-auto gap-4 lg:gap-6 flex-wrap">
                     <div className="text-right">
-                      <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Vendas no mês</p>
+                      <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Juros gerados no mês</p>
                       <p className="text-sm font-bold text-slate-700 dark:text-slate-300">{formatBRL(referrer.base_amount)}</p>
                     </div>
 
