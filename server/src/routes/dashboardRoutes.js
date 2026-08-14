@@ -22,9 +22,11 @@ router.get('/summary', async (req, res) => {
       [ownerId]
     );
 
-    // 2. Total Received (Installments amount_paid)
+    // 2. Total Received — from the payments ledger, not installments.amount_paid,
+    // since INTEREST_ONLY payments never touch amount_paid (they only push the due
+    // date forward) and would otherwise vanish from this total.
     const receivedRes = await queryOne(
-      'SELECT COALESCE(SUM(amount_paid), 0) as total FROM installments WHERE owner_id = ?',
+      'SELECT COALESCE(SUM(amount_paid), 0) as total FROM payments WHERE owner_id = ?',
       [ownerId]
     );
 
