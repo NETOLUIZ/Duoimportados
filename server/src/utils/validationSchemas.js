@@ -40,6 +40,18 @@ const saleSchema = z.object({
   sale_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Data da venda inválida (AAAA-MM-DD)').optional().nullable()
 });
 
+// 3b. Sale Edit Schema — only the fields safe to change after installments already
+// exist (some possibly paid). product_value/installment_count/payment_mode are
+// intentionally excluded: changing them would require regenerating installments
+// and could corrupt already-registered payments.
+const saleEditSchema = z.object({
+  product_name: z.string().trim().optional().nullable()
+    .transform(val => (val && val.length > 0 ? val : 'Produto não especificado')),
+  interest_percent: z.number().nonnegative().optional().default(0),
+  late_fee_percent_per_day: z.number().nonnegative().optional().default(1.0),
+  sale_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Data da venda inválida (AAAA-MM-DD)')
+});
+
 // 4. Payment Schemas
 const paymentSchema = z.object({
   amount_paid: z.union([z.string(), z.number()]).optional().nullable().transform(val => (val === null || val === undefined ? undefined : String(val))),
@@ -82,6 +94,7 @@ module.exports = {
   loginSchema,
   customerSchema,
   saleSchema,
+  saleEditSchema,
   paymentSchema,
   expenseSchema,
   createSellerSchema,

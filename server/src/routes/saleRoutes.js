@@ -3,7 +3,7 @@ const router = express.Router();
 const { query, queryOne } = require('../database');
 const { verifyAuth } = require('../middleware/authMiddleware');
 const { sanitizeBody } = require('../middleware/securityMiddleware');
-const { saleSchema } = require('../utils/validationSchemas');
+const { saleSchema, saleEditSchema } = require('../utils/validationSchemas');
 const { parseToCents, centsToDecimalString, splitInstallments } = require('../utils/financialMath');
 const { logSecurityEvent } = require('../utils/logger');
 const { logAudit } = require('../utils/auditLogger');
@@ -185,6 +185,60 @@ router.post('/', async (req, res) => {
   } catch (err) {
     console.error('Error creating sale:', err);
     return res.status(500).json({ error: 'Erro ao registrar venda.' });
+  }
+});
+
+// PUT /api/sales/:id - Edit Sale (only fields that don't require regenerating installments)
+router.put('/:id', async (req, res) => {
+  try {
+    const ownerId = req.ownerId;
+    const saleId = parseInt(req.params.id);
+
+    if (isNaN(saleId)) return res.status(400).json({ error: 'ID de venda inválido.' });
+
+    const existing = await queryOne('SELECT * FROM sales WHERE id = ? AND owner_id = ?', [saleId, ownerId]);
+    if (!existing) {
+      logSecurityEvent('UNAUTHORIZED_IDOR_SALE_EDIT', { userId: req.user.userId, saleId, ip: req.ip });
+      return res.status(404).json({ error: 'Venda não encontrada.' });
+    }
+
+    const parseResult = saleEditSchema.safeParse(req.body);
+    if (!parseResult.success) {
+      return res.status(400).json({ error: parseResult.error.errors[0]?.message || 'Dados de venda inválidos.' });
+    }
+
+    const { product_name, interest_percent, late_fee_percent_per_day, sale_date } = parseResult.data;
+    const interestPercentDecimal = parseFloat(interest_percent || 0).toFixed(2);
+    const lateFeeRateDecimal = parseFloat(late_fee_percent_per_day || 1.0).toFixed(2);
+
+    await query(
+      `UPDATE sales SET product_name = ?, interest_percent = ?, late_fee_percent_per_day = ?, sale_date = ?
+       WHERE id = ? AND owner_id = ?`,
+      [product_name, interestPercentDecimal, lateFeeRateDecimal, sale_date, saleId, ownerId]
+    );
+
+    logSecurityEvent('SALE_UPDATED', { ownerId, saleId, ip: req.ip });
+    await logAudit(req, 'VENDA_EDITADA', {
+      message: `Venda #${saleId} editada por ${req.user.name}.`,
+      saleId,
+      before: {
+        productName: existing.product_name,
+        interestPercent: existing.interest_percent,
+        lateFeePercentPerDay: existing.late_fee_percent_per_day,
+        saleDate: existing.sale_date
+      },
+      after: {
+        productName: product_name,
+        interestPercent: interestPercentDecimal,
+        lateFeePercentPerDay: lateFeeRateDecimal,
+        saleDate: sale_date
+      }
+    });
+
+    return res.json({ message: 'Venda atualizada com sucesso!' });
+  } catch (err) {
+    console.error('Error updating sale:', err);
+    return res.status(500).json({ error: 'Erro ao atualizar venda.' });
   }
 });
 
