@@ -6,7 +6,7 @@ const inputClass =
   'w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-100 text-sm rounded-xl p-3 min-h-[44px] font-medium placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:ring-2 focus:ring-rose-500 focus:bg-white dark:focus:bg-slate-900 focus:outline-none transition-colors';
 const labelClass = 'block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1';
 
-export default function ExpenseModal({ isOpen, onClose, onSuccess }) {
+export default function ExpenseModal({ isOpen, expense, onClose, onSuccess }) {
   const [categories, setCategories] = useState([]);
   const [name, setName] = useState('');
   const [amount, setAmount] = useState('');
@@ -21,21 +21,31 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess }) {
   useEffect(() => {
     if (isOpen) {
       setError('');
-      setName('');
-      setAmount('');
-      setNotes('');
-      setExpenseDate(new Date().toISOString().split('T')[0]);
 
       api.get('/expenses/categories')
         .then(res => {
           setCategories(res.data);
-          if (res.data.length > 0) {
+          if (!expense && res.data.length > 0) {
             setCategoryName(res.data[0].name);
           }
         })
         .catch(err => console.error('Error fetching categories:', err));
+
+      if (expense) {
+        setName(expense.name || '');
+        setAmount(String(expense.amount ?? ''));
+        setCategoryName(expense.category_name || '');
+        setIsCustomCat(false);
+        setExpenseDate((expense.expense_date || '').split('T')[0].split(' ')[0] || new Date().toISOString().split('T')[0]);
+        setNotes(expense.notes || '');
+      } else {
+        setName('');
+        setAmount('');
+        setNotes('');
+        setExpenseDate(new Date().toISOString().split('T')[0]);
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, expense]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -70,13 +80,19 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess }) {
 
     try {
       setSubmitting(true);
-      await api.post('/expenses', {
+      const payload = {
         name,
         amount: val.toFixed(2),
         category_name: finalCategory,
         expense_date: expenseDate,
         notes
-      });
+      };
+
+      if (expense) {
+        await api.put(`/expenses/${expense.id}`, payload);
+      } else {
+        await api.post('/expenses', payload);
+      }
 
       onSuccess();
       onClose();
@@ -103,7 +119,7 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess }) {
               <DollarSign className="w-6 h-6 text-white" />
             </div>
             <div className="min-w-0">
-              <h3 id="expense-modal-title" className="text-lg font-bold truncate">Registrar Nova Despesa</h3>
+              <h3 id="expense-modal-title" className="text-lg font-bold truncate">{expense ? 'Editar Despesa' : 'Registrar Nova Despesa'}</h3>
               <p className="text-xs text-rose-100">Controle de custos operacionais e compras</p>
             </div>
           </div>
@@ -232,7 +248,7 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess }) {
             disabled={submitting}
             className="w-full sm:w-auto px-6 py-3 min-h-[44px] rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-sm shadow-lg shadow-rose-900/30 transition-all disabled:opacity-50"
           >
-            {submitting ? 'Salvando...' : '+ REGISTRAR DESPESA'}
+            {submitting ? 'Salvando...' : (expense ? 'SALVAR ALTERAÇÕES' : '+ REGISTRAR DESPESA')}
           </button>
         </div>
       </div>

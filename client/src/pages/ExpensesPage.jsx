@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { DollarSign, Plus, Trash2, Tag } from 'lucide-react';
+import { DollarSign, Plus, Trash2, Tag, Edit } from 'lucide-react';
 import api from '../services/api';
 import { formatBRL, formatDate } from '../utils/formatters';
 
-export default function ExpensesPage({ onOpenNewExpense }) {
+export default function ExpensesPage({ onOpenNewExpense, onEditExpense }) {
   const [expenses, setExpenses] = useState([]);
   const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('');
@@ -129,13 +129,22 @@ export default function ExpensesPage({ onOpenNewExpense }) {
                       <p className="font-bold text-slate-800 dark:text-slate-100 truncate">{e.name}</p>
                       <p className="text-xs text-slate-400 dark:text-slate-500 font-mono">{formatDate(e.expense_date)}</p>
                     </div>
-                    <button
-                      onClick={() => handleDelete(e.id, e.name)}
-                      aria-label={`Excluir despesa ${e.name}`}
-                      className="w-10 h-10 flex-shrink-0 flex items-center justify-center bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 rounded-xl"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <button
+                        onClick={() => onEditExpense?.(e)}
+                        aria-label={`Editar despesa ${e.name}`}
+                        className="w-10 h-10 flex items-center justify-center bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(e.id, e.name)}
+                        aria-label={`Excluir despesa ${e.name}`}
+                        className="w-10 h-10 flex items-center justify-center bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 rounded-xl"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="inline-block px-2.5 py-1 rounded-lg text-xs font-bold bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-500/30">
@@ -182,14 +191,24 @@ export default function ExpensesPage({ onOpenNewExpense }) {
                         {e.notes || '-'}
                       </td>
                       <td className="p-4 text-right px-6">
-                        <button
-                          onClick={() => handleDelete(e.id, e.name)}
-                          title="Excluir despesa"
-                          aria-label={`Excluir despesa ${e.name}`}
-                          className="p-2 bg-rose-50 dark:bg-rose-500/10 hover:bg-rose-100 dark:hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 rounded-xl transition-colors"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => onEditExpense?.(e)}
+                            title="Editar despesa"
+                            aria-label={`Editar despesa ${e.name}`}
+                            className="p-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl transition-colors"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(e.id, e.name)}
+                            title="Excluir despesa"
+                            aria-label={`Excluir despesa ${e.name}`}
+                            className="p-2 bg-rose-50 dark:bg-rose-500/10 hover:bg-rose-100 dark:hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 rounded-xl transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}

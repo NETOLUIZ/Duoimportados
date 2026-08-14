@@ -41,6 +41,7 @@ function ProtectedLayout() {
   const [selectedCustomer, setSelectedCustomer] = useState(null);
 
   const [isExpenseOpen, setIsExpenseOpen] = useState(false);
+  const [selectedExpense, setSelectedExpense] = useState(null);
   const [isNewSellerOpen, setIsNewSellerOpen] = useState(false);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
 
@@ -98,6 +99,11 @@ function ProtectedLayout() {
   const handleOpenCustomer = (customerToEdit = null) => {
     setSelectedCustomer(customerToEdit);
     setIsCustomerOpen(true);
+  };
+
+  const handleOpenExpense = (expenseToEdit = null) => {
+    setSelectedExpense(expenseToEdit);
+    setIsExpenseOpen(true);
   };
 
   const triggerGlobalRefresh = () => {
@@ -161,7 +167,8 @@ function ProtectedLayout() {
               path="/expenses"
               element={
                 <ExpensesPage
-                  onOpenNewExpense={() => setIsExpenseOpen(true)}
+                  onOpenNewExpense={() => handleOpenExpense(null)}
+                  onEditExpense={(exp) => handleOpenExpense(exp)}
                 />
               }
             />
@@ -254,7 +261,11 @@ function ProtectedLayout() {
 
       <ExpenseModal
         isOpen={isExpenseOpen}
-        onClose={() => setIsExpenseOpen(false)}
+        expense={selectedExpense}
+        onClose={() => {
+          setIsExpenseOpen(false);
+          setSelectedExpense(null);
+        }}
         onSuccess={triggerGlobalRefresh}
       />
 
