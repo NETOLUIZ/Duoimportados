@@ -107,7 +107,7 @@ export default function NewSaleModal({ isOpen, onClose, onSuccess }) {
     try {
       setSubmitting(true);
       await api.post('/sales', {
-        customer_id: customerId,
+        customer_id: Number(customerId),
         product_name: productName,
         product_value: pVal.toFixed(2),
         interest_value: jVal.toFixed(2),
@@ -182,7 +182,7 @@ export default function NewSaleModal({ isOpen, onClose, onSuccess }) {
               <select
                 id="sale-customer"
                 value={customerId}
-                onChange={(e) => setCustomerId(e.target.value)}
+                onChange={(e) => setCustomerId(Number(e.target.value))}
                 required
                 className={`${inputClass} font-semibold`}
               >
