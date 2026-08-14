@@ -9,6 +9,7 @@ import {
   TrendingUp,
   Settings,
   Plus,
+  UserPlus,
   ShieldCheck,
   Package,
   Handshake,
@@ -16,7 +17,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
-export default function Sidebar({ isOpen, onClose, onOpenNewSale }) {
+export default function Sidebar({ isOpen, onClose, onOpenNewSale, onOpenNewCustomer }) {
   const { user, isSuperAdmin } = useAuth();
   const location = useLocation();
 
@@ -77,18 +78,29 @@ export default function Sidebar({ isOpen, onClose, onOpenNewSale }) {
           </button>
         </div>
 
-        {/* Prominent Quick Action Button for Sellers */}
+        {/* Prominent Quick Action Buttons for Sellers */}
         {!isSuperAdmin && (
-          <div className="p-4">
+          <div className="p-4 flex items-center gap-2">
             <button
               onClick={() => {
                 onOpenNewSale();
                 onClose?.();
               }}
-              className="w-full bg-brand-blue hover:bg-brand-blueHover text-white font-semibold py-3 px-4 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-blue-900/40 hover:shadow-blue-900/60 transition-all duration-200 text-sm tracking-wide transform hover:-translate-y-0.5 active:translate-y-0"
+              className="flex-1 bg-brand-blue hover:bg-brand-blueHover text-white font-semibold py-3 px-4 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-blue-900/40 hover:shadow-blue-900/60 transition-all duration-200 text-sm tracking-wide transform hover:-translate-y-0.5 active:translate-y-0"
             >
               <Plus className="w-5 h-5 stroke-[2.5]" />
               <span>NOVA VENDA</span>
+            </button>
+            <button
+              onClick={() => {
+                onOpenNewCustomer?.();
+                onClose?.();
+              }}
+              title="Novo Cliente"
+              aria-label="Novo Cliente"
+              className="w-12 h-12 flex-shrink-0 bg-navy-800 hover:bg-navy-700 border border-navy-700 text-white rounded-xl flex items-center justify-center shadow-lg transition-all duration-200 transform hover:-translate-y-0.5 active:translate-y-0"
+            >
+              <UserPlus className="w-5 h-5 stroke-[2.5]" />
             </button>
           </div>
         )}

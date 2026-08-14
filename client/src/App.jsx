@@ -117,6 +117,7 @@ function ProtectedLayout() {
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
         onOpenNewSale={() => setIsNewSaleOpen(true)}
+        onOpenNewCustomer={() => handleOpenCustomer(null)}
       />
 
       {/* 2. Main Content Canvas (Flexible 100% Width & Height) */}
