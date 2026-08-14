@@ -22,10 +22,8 @@ sudo sed -i 's/3011/3095/g' /etc/nginx/sites-available/duoimportados
 sudo nginx -t
 sudo systemctl reload nginx
 
-# 4. Gerar Certificado SSL (HTTPS)
-# NOTA: Para obter SSL Wildcard (*.duoimportados.com.br) via Let's Encrypt diretamente na VPS,
-# é necessária validação DNS-01 (TXT record). Caso use Cloudflare como DNS Proxy, o SSL é automático na borda.
-sudo certbot --nginx -d duoimportados.com.br -d www.duoimportados.com.br --non-interactive --agree-tos -m admin@duoimportados.com.br || true
+# 4. Gerar Certificado SSL (HTTPS) para o domínio principal e subdomínios criados
+sudo certbot --nginx -d duoimportados.com.br -d www.duoimportados.com.br -d global.duoimportados.com.br -d test.duoimportados.com.br --expand --non-interactive --agree-tos -m admin@duoimportados.com.br || true
 
 echo "✅ Servidor Nginx preparado para Wildcard DNS (*.duoimportados.com.br) com sucesso!"
 
