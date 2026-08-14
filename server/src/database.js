@@ -362,7 +362,18 @@ async function setupPostgresRLS() {
     'referral_payments'
   ];
 
-  for (const table of rlsTables) {
+  // IMPORTANT: no route in this codebase currently sets a sessionContext when
+  // calling query()/queryOne(), so app.current_user_role/current_owner_id are
+  // NEVER set today — the USING clause below is written so an unset role
+  // means "allow" (tenant isolation still comes from each route's own
+  // WHERE owner_id = ? clause). That makes RLS a safety net with zero
+  // benefit yet, so it must NEVER be the thing that silently hides data:
+  // if ENABLE/FORCE succeed but CREATE POLICY fails, Postgres leaves the
+  // table forced with no policy at all, which means "deny every row to
+  // everyone" — silently, with no application-level error. If that happens
+  // we immediately disable RLS again on that table rather than leave it
+  // in a broken, data-hiding state.
+  async function applyTenantPolicy(table, ownerColumn) {
     try {
       await query(`ALTER TABLE ${table} ENABLE ROW LEVEL SECURITY;`);
       await query(`ALTER TABLE ${table} FORCE ROW LEVEL SECURITY;`);
@@ -373,32 +384,26 @@ async function setupPostgresRLS() {
         USING (
           NULLIF(current_setting('app.current_user_role', true), '') IS NULL
           OR current_setting('app.current_user_role', true) = 'SUPER_ADMIN'
-          OR owner_id = NULLIF(current_setting('app.current_owner_id', true), '')::INT
+          OR ${ownerColumn} = NULLIF(current_setting('app.current_owner_id', true), '')::INT
         );
       `);
     } catch (err) {
-      console.warn(`[DB RLS Warning] Table ${table} RLS notice:`, err.message);
+      console.error(`[DB RLS ERROR] Failed to set up policy for "${table}" — disabling RLS on it so it does not silently hide data:`, err.message);
+      try {
+        await query(`ALTER TABLE ${table} NO FORCE ROW LEVEL SECURITY;`);
+        await query(`ALTER TABLE ${table} DISABLE ROW LEVEL SECURITY;`);
+      } catch (rollbackErr) {
+        console.error(`[DB RLS ERROR] Could not roll back RLS on "${table}" — check this table manually (SELECT rowsecurity, forcerowsecurity FROM pg_tables WHERE tablename = '${table}'):`, rollbackErr.message);
+      }
     }
   }
 
-  try {
-    await query(`ALTER TABLE users ENABLE ROW LEVEL SECURITY;`);
-    await query(`ALTER TABLE users FORCE ROW LEVEL SECURITY;`);
-    await query(`DROP POLICY IF EXISTS users_tenant_policy ON users;`);
-    await query(`
-      CREATE POLICY users_tenant_policy ON users
-      FOR ALL
-      USING (
-        NULLIF(current_setting('app.current_user_role', true), '') IS NULL
-        OR current_setting('app.current_user_role', true) = 'SUPER_ADMIN'
-        OR id = NULLIF(current_setting('app.current_owner_id', true), '')::INT
-      );
-    `);
-  } catch (err) {
-    console.warn(`[DB RLS Warning] Table users RLS notice:`, err.message);
+  for (const table of rlsTables) {
+    await applyTenantPolicy(table, 'owner_id');
   }
+  await applyTenantPolicy('users', 'id');
 
-  console.log('[DB RLS] Row-Level Security (RLS) policies successfully activated!');
+  console.log('[DB RLS] Row-Level Security (RLS) setup complete.');
 }
 
 async function seedInitialData() {
