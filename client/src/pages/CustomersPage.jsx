@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Search, Plus, Phone, MapPin, Edit, Trash2, Eye, ShoppingCart, Clock, X, TrendingUp, PiggyBank, Wallet } from 'lucide-react';
+import { Users, Search, Plus, Phone, MapPin, Edit, Trash2, Eye, ShoppingCart, Clock, X, TrendingUp, PiggyBank, Wallet, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { formatBRL, formatDate, formatPhone } from '../utils/formatters';
+import StatusBadge, { InstallmentStatusBadge } from '../components/StatusBadge';
 
 function CustomerSituationBadge({ hasOverdue, hasDebt }) {
   if (hasOverdue) return <StatusBadge tone="danger" label="Em Atraso" icon={AlertTriangle} />;
