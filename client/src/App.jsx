@@ -8,7 +8,7 @@ import { playAlertSound } from './utils/sound';
 import Sidebar from './components/Sidebar';
 import Topbar from './components/Topbar';
 import ThemeToggle from './components/ThemeToggle';
-import NewSaleModal from './components/NewSaleModal';
+import CheckoutModal from './components/CheckoutModal';
 import PaymentModal from './components/PaymentModal';
 import CustomerModal from './components/CustomerModal';
 import ExpenseModal from './components/ExpenseModal';
@@ -234,7 +234,7 @@ function ProtectedLayout() {
       </div>
 
       {/* Modals */}
-      <NewSaleModal
+      <CheckoutModal
         isOpen={isNewSaleOpen}
         onClose={() => setIsNewSaleOpen(false)}
         onSuccess={triggerGlobalRefresh}
