@@ -6,6 +6,7 @@ const { sanitizeBody } = require('../middleware/securityMiddleware');
 const { referrerConfigSchema } = require('../utils/validationSchemas');
 const { parseToCents, centsToDecimalString } = require('../utils/financialMath');
 const { logSecurityEvent } = require('../utils/logger');
+const { logAudit } = require('../utils/auditLogger');
 
 const REFERRAL_EXPENSE_CATEGORY = 'Comissão de Indicação';
 
@@ -229,6 +230,14 @@ router.post('/:id/pay', async (req, res) => {
     );
 
     logSecurityEvent('REFERRAL_COMMISSION_PAID', { ownerId, referrerId, period, amount: commissionDecimal, ip: req.ip });
+    await logAudit(req, 'COMISSAO_INDICACAO_PAGA', {
+      message: `Comissão de indicação de R$ ${commissionDecimal} paga a "${referrer.name}" (${period}), lançada em Despesas.`,
+      referrerId,
+      referrerName: referrer.name,
+      period,
+      amount: commissionDecimal,
+      expenseId
+    });
 
     return res.json({
       message: 'Comissão paga e registrada em Despesas!',
