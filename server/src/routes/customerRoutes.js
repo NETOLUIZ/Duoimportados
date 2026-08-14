@@ -5,6 +5,7 @@ const { verifyAuth } = require('../middleware/authMiddleware');
 const { sanitizeBody } = require('../middleware/securityMiddleware');
 const { customerSchema } = require('../utils/validationSchemas');
 const { logSecurityEvent } = require('../utils/logger');
+const { logAudit } = require('../utils/auditLogger');
 const { parseToCents, centsToDecimalString } = require('../utils/financialMath');
 
 // All customer routes require authentication and sanitize body
@@ -158,9 +159,16 @@ router.post('/', async (req, res) => {
 
     logSecurityEvent('CUSTOMER_CREATED', { ownerId, customerName: name, ip: req.ip });
 
+    const customerId = result[0]?.id || result.insertId;
+    await logAudit(req, 'CLIENTE_CRIADO', {
+      message: `Cliente "${name}" cadastrado.`,
+      customerId,
+      name
+    });
+
     return res.status(201).json({
       message: 'Cliente cadastrado com sucesso!',
-      id: result[0]?.id || result.insertId
+      id: customerId
     });
   } catch (err) {
     console.error('Error creating customer:', err);
@@ -219,6 +227,14 @@ router.put('/:id', async (req, res) => {
       ip: req.ip
     });
 
+    await logAudit(req, 'CLIENTE_EDITADO', {
+      message: `Cliente "${existing.name}" editado por ${req.user.name}.`,
+      customerId,
+      changedFields,
+      before: Object.fromEntries(changedFields.map((k) => [k, existing[k]])),
+      after: Object.fromEntries(changedFields.map((k) => [k, nextValues[k]]))
+    });
+
     return res.json({ message: 'Cliente atualizado com sucesso!' });
   } catch (err) {
     return res.status(500).json({ error: 'Erro ao atualizar cliente.' });
@@ -233,7 +249,7 @@ router.delete('/:id', async (req, res) => {
 
     if (isNaN(customerId)) return res.status(400).json({ error: 'ID inválido.' });
 
-    const existing = await queryOne('SELECT id FROM customers WHERE id = ? AND owner_id = ?', [customerId, ownerId]);
+    const existing = await queryOne('SELECT id, name FROM customers WHERE id = ? AND owner_id = ?', [customerId, ownerId]);
     if (!existing) {
       logSecurityEvent('UNAUTHORIZED_IDOR_CUSTOMER_DELETE', { userId: req.user.userId, customerId, ip: req.ip });
       return res.status(404).json({ error: 'Cliente não encontrado.' });
@@ -241,6 +257,12 @@ router.delete('/:id', async (req, res) => {
 
     await query('DELETE FROM customers WHERE id = ? AND owner_id = ?', [customerId, ownerId]);
     logSecurityEvent('CUSTOMER_DELETED', { ownerId, customerId, ip: req.ip });
+
+    await logAudit(req, 'CLIENTE_EXCLUIDO', {
+      message: `Cliente "${existing.name}" excluído por ${req.user.name}. Todas as vendas, parcelas e pagamentos dele foram apagados junto (exclusão em cascata).`,
+      customerId,
+      name: existing.name
+    });
 
     return res.json({ message: 'Cliente excluído com sucesso!' });
   } catch (err) {
