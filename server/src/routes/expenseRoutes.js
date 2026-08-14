@@ -26,8 +26,9 @@ router.get('/', async (req, res) => {
     }
 
     if (search && typeof search === 'string' && search.trim() !== '') {
-      sql += ` AND (name LIKE ? OR notes LIKE ?)`;
-      const term = `%${search.trim()}%`;
+      // LOWER() on both sides — Postgres' LIKE is case-sensitive (unlike SQLite's).
+      sql += ` AND (LOWER(name) LIKE ? OR LOWER(notes) LIKE ?)`;
+      const term = `%${search.trim().toLowerCase()}%`;
       params.push(term, term);
     }
 

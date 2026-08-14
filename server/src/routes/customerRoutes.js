@@ -40,8 +40,10 @@ router.get('/', async (req, res) => {
     const params = [ownerId];
 
     if (search && typeof search === 'string' && search.trim() !== '') {
-      sql += ` AND (c.name LIKE ? OR c.phone LIKE ? OR c.city LIKE ?)`;
-      const term = `%${search.trim()}%`;
+      // LOWER() on both sides — Postgres' LIKE is case-sensitive (unlike SQLite's),
+      // so "andreza" wouldn't match a customer named "Andreza" without this.
+      sql += ` AND (LOWER(c.name) LIKE ? OR LOWER(c.phone) LIKE ? OR LOWER(c.city) LIKE ?)`;
+      const term = `%${search.trim().toLowerCase()}%`;
       params.push(term, term, term);
     }
 
