@@ -312,10 +312,18 @@ async function initDatabase() {
       amount ${numericType} NOT NULL,
       expense_date DATE NOT NULL,
       notes TEXT,
+      expense_type VARCHAR(20) NOT NULL DEFAULT 'VARIAVEL',
       created_at TIMESTAMP DEFAULT ${timestampDefault},
       FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE CASCADE
     )
   `);
+
+  // Migration: add expense_type to pre-existing expenses tables that predate this column
+  try {
+    await query(`ALTER TABLE expenses ADD COLUMN expense_type VARCHAR(20) NOT NULL DEFAULT 'VARIAVEL'`);
+  } catch (err) {
+    // Column already exists — safe to ignore
+  }
 
   // 9. Referrers table (people who refer customers, with a commission rule)
   await query(`

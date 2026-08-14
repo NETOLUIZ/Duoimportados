@@ -69,7 +69,7 @@ router.post('/', async (req, res) => {
     }
 
     const ownerId = req.ownerId;
-    const { category_name, name, amount, expense_date, notes } = parseResult.data;
+    const { category_name, name, amount, expense_date, expense_type, notes } = parseResult.data;
 
     const amountCents = parseToCents(amount);
     if (amountCents <= 0) {
@@ -80,9 +80,9 @@ router.post('/', async (req, res) => {
     const dateStr = expense_date || new Date().toISOString().split('T')[0];
 
     const result = await query(
-      `INSERT INTO expenses (owner_id, category_name, name, amount, expense_date, notes)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [ownerId, category_name, name, amountDecimal, dateStr, notes || null]
+      `INSERT INTO expenses (owner_id, category_name, name, amount, expense_date, expense_type, notes)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [ownerId, category_name, name, amountDecimal, dateStr, expense_type, notes || null]
     );
 
     logSecurityEvent('EXPENSE_CREATED', { ownerId, category_name, name, amount: amountDecimal, ip: req.ip });
@@ -124,7 +124,7 @@ router.put('/:id', async (req, res) => {
       return res.status(400).json({ error: parseResult.error.errors[0]?.message || 'Dados de despesa inválidos.' });
     }
 
-    const { category_name, name, amount, expense_date, notes } = parseResult.data;
+    const { category_name, name, amount, expense_date, expense_type, notes } = parseResult.data;
 
     const amountCents = parseToCents(amount);
     if (amountCents <= 0) {
@@ -135,8 +135,8 @@ router.put('/:id', async (req, res) => {
     const dateStr = expense_date || existing.expense_date;
 
     await query(
-      `UPDATE expenses SET category_name = ?, name = ?, amount = ?, expense_date = ?, notes = ? WHERE id = ? AND owner_id = ?`,
-      [category_name, name, amountDecimal, dateStr, notes || null, expenseId, ownerId]
+      `UPDATE expenses SET category_name = ?, name = ?, amount = ?, expense_date = ?, expense_type = ?, notes = ? WHERE id = ? AND owner_id = ?`,
+      [category_name, name, amountDecimal, dateStr, expense_type, notes || null, expenseId, ownerId]
     );
 
     logSecurityEvent('EXPENSE_UPDATED', { ownerId, expenseId, ip: req.ip });

@@ -1,7 +1,122 @@
 import React, { useState, useEffect } from 'react';
-import { DollarSign, Plus, Trash2, Tag, Edit } from 'lucide-react';
+import { DollarSign, Plus, Trash2, Tag, Edit, Repeat, Shuffle } from 'lucide-react';
 import api from '../services/api';
 import { formatBRL, formatDate } from '../utils/formatters';
+
+function ExpenseGroup({ title, icon: Icon, tone, items, onEditExpense, onDelete }) {
+  const subtotal = items.reduce((acc, curr) => acc + parseFloat(curr.amount || 0), 0);
+
+  if (items.length === 0) return null;
+
+  return (
+    <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+      <div className={`p-4 px-5 flex items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 ${tone.headerBg}`}>
+        <div className="flex items-center gap-2.5">
+          <Icon className={`w-5 h-5 ${tone.text}`} />
+          <h3 className={`font-black text-sm uppercase tracking-wider ${tone.text}`}>{title}</h3>
+          <span className="text-xs font-semibold text-slate-400 dark:text-slate-500">({items.length})</span>
+        </div>
+        <p className={`text-lg font-black ${tone.text}`}>{formatBRL(subtotal)}</p>
+      </div>
+
+      {/* Mobile card list */}
+      <div className="md:hidden divide-y divide-slate-100 dark:divide-slate-800">
+        {items.map((e) => (
+          <div key={e.id} className="p-4 space-y-2.5">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="font-bold text-slate-800 dark:text-slate-100 truncate">{e.name}</p>
+                <p className="text-xs text-slate-400 dark:text-slate-500 font-mono">{formatDate(e.expense_date)}</p>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <button
+                  onClick={() => onEditExpense?.(e)}
+                  aria-label={`Editar despesa ${e.name}`}
+                  className="w-10 h-10 flex items-center justify-center bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl"
+                >
+                  <Edit className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => onDelete(e.id, e.name)}
+                  aria-label={`Excluir despesa ${e.name}`}
+                  className="w-10 h-10 flex items-center justify-center bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 rounded-xl"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="inline-block px-2.5 py-1 rounded-lg text-xs font-bold bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-500/30">
+                {e.category_name}
+              </span>
+              <span className="font-black text-rose-600 dark:text-rose-400">{formatBRL(e.amount)}</span>
+            </div>
+            {e.notes && <p className="text-xs text-slate-500 dark:text-slate-400 italic">{e.notes}</p>}
+          </div>
+        ))}
+      </div>
+
+      {/* Desktop table */}
+      <div className="hidden md:block overflow-x-auto">
+        <table className="w-full text-left border-collapse">
+          <thead>
+            <tr className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 text-xs uppercase font-extrabold tracking-wider border-b border-slate-200 dark:border-slate-800">
+              <th className="p-4 px-6">Data</th>
+              <th className="p-4">Descrição da Despesa</th>
+              <th className="p-4">Categoria</th>
+              <th className="p-4 text-right">Valor (R$)</th>
+              <th className="p-4">Observações</th>
+              <th className="p-4 text-right px-6">Ação</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-sm font-medium">
+            {items.map((e) => (
+              <tr key={e.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
+                <td className="p-4 px-6 text-slate-600 dark:text-slate-300 font-mono text-xs whitespace-nowrap">
+                  {formatDate(e.expense_date)}
+                </td>
+                <td className="p-4 font-bold text-slate-800 dark:text-slate-100">
+                  {e.name}
+                </td>
+                <td className="p-4">
+                  <span className="inline-block px-2.5 py-1 rounded-lg text-xs font-bold bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-500/30">
+                    {e.category_name}
+                  </span>
+                </td>
+                <td className="p-4 text-right font-black text-rose-600 dark:text-rose-400">
+                  {formatBRL(e.amount)}
+                </td>
+                <td className="p-4 text-slate-500 dark:text-slate-400 text-xs italic">
+                  {e.notes || '-'}
+                </td>
+                <td className="p-4 text-right px-6">
+                  <div className="flex items-center justify-end gap-2">
+                    <button
+                      onClick={() => onEditExpense?.(e)}
+                      title="Editar despesa"
+                      aria-label={`Editar despesa ${e.name}`}
+                      className="p-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl transition-colors"
+                    >
+                      <Edit className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => onDelete(e.id, e.name)}
+                      title="Excluir despesa"
+                      aria-label={`Excluir despesa ${e.name}`}
+                      className="p-2 bg-rose-50 dark:bg-rose-500/10 hover:bg-rose-100 dark:hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 rounded-xl transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
 
 export default function ExpensesPage({ onOpenNewExpense, onEditExpense }) {
   const [expenses, setExpenses] = useState([]);
@@ -44,6 +159,8 @@ export default function ExpensesPage({ onOpenNewExpense, onEditExpense }) {
   };
 
   const totalExpenseAmount = expenses.reduce((acc, curr) => acc + parseFloat(curr.amount || 0), 0);
+  const fixedExpenses = expenses.filter((e) => e.expense_type === 'FIXA');
+  const variableExpenses = expenses.filter((e) => e.expense_type !== 'FIXA');
 
   return (
     <div className="p-4 sm:p-6 space-y-5 sm:space-y-6 w-full max-w-full">
@@ -108,116 +225,37 @@ export default function ExpensesPage({ onOpenNewExpense, onEditExpense }) {
         </div>
       </div>
 
-      {/* Expenses List */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
-        {loading ? (
-          <div className="p-8 text-center text-slate-500 dark:text-slate-400 font-medium">Carregando despesas...</div>
-        ) : expenses.length === 0 ? (
-          <div className="p-12 text-center text-slate-400 dark:text-slate-500 space-y-2">
-            <DollarSign className="w-12 h-12 mx-auto text-slate-300 dark:text-slate-700" />
-            <p className="text-base font-bold text-slate-600 dark:text-slate-300">Nenhuma despesa registrada nesta categoria</p>
-            <p className="text-xs">Cadastre novos lançamentos clicando em "NOVA DESPESA".</p>
-          </div>
-        ) : (
-          <>
-            {/* Mobile card list */}
-            <div className="md:hidden divide-y divide-slate-100 dark:divide-slate-800">
-              {expenses.map((e) => (
-                <div key={e.id} className="p-4 space-y-2.5">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="font-bold text-slate-800 dark:text-slate-100 truncate">{e.name}</p>
-                      <p className="text-xs text-slate-400 dark:text-slate-500 font-mono">{formatDate(e.expense_date)}</p>
-                    </div>
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      <button
-                        onClick={() => onEditExpense?.(e)}
-                        aria-label={`Editar despesa ${e.name}`}
-                        className="w-10 h-10 flex items-center justify-center bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(e.id, e.name)}
-                        aria-label={`Excluir despesa ${e.name}`}
-                        className="w-10 h-10 flex items-center justify-center bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 rounded-xl"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="inline-block px-2.5 py-1 rounded-lg text-xs font-bold bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-500/30">
-                      {e.category_name}
-                    </span>
-                    <span className="font-black text-rose-600 dark:text-rose-400">{formatBRL(e.amount)}</span>
-                  </div>
-                  {e.notes && <p className="text-xs text-slate-500 dark:text-slate-400 italic">{e.notes}</p>}
-                </div>
-              ))}
-            </div>
-
-            {/* Desktop table */}
-            <div className="hidden md:block overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 text-xs uppercase font-extrabold tracking-wider border-b border-slate-200 dark:border-slate-800">
-                    <th className="p-4 px-6">Data</th>
-                    <th className="p-4">Descrição da Despesa</th>
-                    <th className="p-4">Categoria</th>
-                    <th className="p-4 text-right">Valor (R$)</th>
-                    <th className="p-4">Observações</th>
-                    <th className="p-4 text-right px-6">Ação</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-sm font-medium">
-                  {expenses.map((e) => (
-                    <tr key={e.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
-                      <td className="p-4 px-6 text-slate-600 dark:text-slate-300 font-mono text-xs whitespace-nowrap">
-                        {formatDate(e.expense_date)}
-                      </td>
-                      <td className="p-4 font-bold text-slate-800 dark:text-slate-100">
-                        {e.name}
-                      </td>
-                      <td className="p-4">
-                        <span className="inline-block px-2.5 py-1 rounded-lg text-xs font-bold bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-500/30">
-                          {e.category_name}
-                        </span>
-                      </td>
-                      <td className="p-4 text-right font-black text-rose-600 dark:text-rose-400">
-                        {formatBRL(e.amount)}
-                      </td>
-                      <td className="p-4 text-slate-500 dark:text-slate-400 text-xs italic">
-                        {e.notes || '-'}
-                      </td>
-                      <td className="p-4 text-right px-6">
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            onClick={() => onEditExpense?.(e)}
-                            title="Editar despesa"
-                            aria-label={`Editar despesa ${e.name}`}
-                            className="p-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl transition-colors"
-                          >
-                            <Edit className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(e.id, e.name)}
-                            title="Excluir despesa"
-                            aria-label={`Excluir despesa ${e.name}`}
-                            className="p-2 bg-rose-50 dark:bg-rose-500/10 hover:bg-rose-100 dark:hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 rounded-xl transition-colors"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </>
-        )}
-      </div>
+      {/* Expenses List, split into Fixed vs Variable */}
+      {loading ? (
+        <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm p-8 text-center text-slate-500 dark:text-slate-400 font-medium">
+          Carregando despesas...
+        </div>
+      ) : expenses.length === 0 ? (
+        <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm p-12 text-center text-slate-400 dark:text-slate-500 space-y-2">
+          <DollarSign className="w-12 h-12 mx-auto text-slate-300 dark:text-slate-700" />
+          <p className="text-base font-bold text-slate-600 dark:text-slate-300">Nenhuma despesa registrada nesta categoria</p>
+          <p className="text-xs">Cadastre novos lançamentos clicando em "NOVA DESPESA".</p>
+        </div>
+      ) : (
+        <div className="space-y-5">
+          <ExpenseGroup
+            title="Despesas Fixas"
+            icon={Repeat}
+            tone={{ headerBg: 'bg-rose-50 dark:bg-rose-500/10', text: 'text-rose-700 dark:text-rose-400' }}
+            items={fixedExpenses}
+            onEditExpense={onEditExpense}
+            onDelete={handleDelete}
+          />
+          <ExpenseGroup
+            title="Despesas Variáveis"
+            icon={Shuffle}
+            tone={{ headerBg: 'bg-slate-50 dark:bg-slate-800/60', text: 'text-slate-700 dark:text-slate-300' }}
+            items={variableExpenses}
+            onEditExpense={onEditExpense}
+            onDelete={handleDelete}
+          />
+        </div>
+      )}
     </div>
   );
 }

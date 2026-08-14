@@ -57,6 +57,7 @@ const expenseSchema = z.object({
   name: z.string().trim().min(2, 'Descrição da despesa obrigatória'),
   amount: z.union([z.string(), z.number()]).transform(val => String(val)),
   expense_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Data da despesa inválida (AAAA-MM-DD)'),
+  expense_type: z.enum(['FIXA', 'VARIAVEL']).optional().default('VARIAVEL'),
   notes: z.string().trim().optional().nullable()
 });
 

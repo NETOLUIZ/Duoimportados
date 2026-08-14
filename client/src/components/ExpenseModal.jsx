@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, DollarSign, Tag, AlertCircle } from 'lucide-react';
+import { X, DollarSign, Tag, AlertCircle, Repeat, Shuffle } from 'lucide-react';
 import api from '../services/api';
 
 const inputClass =
@@ -14,6 +14,7 @@ export default function ExpenseModal({ isOpen, expense, onClose, onSuccess }) {
   const [customCategory, setCustomCategory] = useState('');
   const [isCustomCat, setIsCustomCat] = useState(false);
   const [expenseDate, setExpenseDate] = useState('');
+  const [expenseType, setExpenseType] = useState('VARIAVEL');
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -37,12 +38,14 @@ export default function ExpenseModal({ isOpen, expense, onClose, onSuccess }) {
         setCategoryName(expense.category_name || '');
         setIsCustomCat(false);
         setExpenseDate((expense.expense_date || '').split('T')[0].split(' ')[0] || new Date().toISOString().split('T')[0]);
+        setExpenseType(expense.expense_type === 'FIXA' ? 'FIXA' : 'VARIAVEL');
         setNotes(expense.notes || '');
       } else {
         setName('');
         setAmount('');
         setNotes('');
         setExpenseDate(new Date().toISOString().split('T')[0]);
+        setExpenseType('VARIAVEL');
       }
     }
   }, [isOpen, expense]);
@@ -85,6 +88,7 @@ export default function ExpenseModal({ isOpen, expense, onClose, onSuccess }) {
         amount: val.toFixed(2),
         category_name: finalCategory,
         expense_date: expenseDate,
+        expense_type: expenseType,
         notes
       };
 
@@ -182,6 +186,37 @@ export default function ExpenseModal({ isOpen, expense, onClose, onSuccess }) {
                 className={`${inputClass} font-semibold`}
               />
             </div>
+          </div>
+
+          <div>
+            <label className={labelClass}>Tipo de Despesa *</label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setExpenseType('FIXA')}
+                className={`flex items-center justify-center gap-2 py-2.5 px-3 min-h-[44px] rounded-xl text-sm font-bold border transition-all ${
+                  expenseType === 'FIXA'
+                    ? 'bg-rose-600 border-rose-600 text-white shadow-md'
+                    : 'bg-slate-50 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300'
+                }`}
+              >
+                <Repeat className="w-4 h-4" />
+                Fixa
+              </button>
+              <button
+                type="button"
+                onClick={() => setExpenseType('VARIAVEL')}
+                className={`flex items-center justify-center gap-2 py-2.5 px-3 min-h-[44px] rounded-xl text-sm font-bold border transition-all ${
+                  expenseType === 'VARIAVEL'
+                    ? 'bg-rose-600 border-rose-600 text-white shadow-md'
+                    : 'bg-slate-50 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300'
+                }`}
+              >
+                <Shuffle className="w-4 h-4" />
+                Variável
+              </button>
+            </div>
+            <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">Fixa: se repete todo mês (aluguel, escola...). Variável: eventual ou muda de valor.</p>
           </div>
 
           <div>
