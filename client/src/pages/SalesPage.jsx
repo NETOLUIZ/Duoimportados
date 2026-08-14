@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { ShoppingCart, Plus, Trash2, Eye, X } from 'lucide-react';
 import api from '../services/api';
+import { useAuth } from '../context/AuthContext';
 import { formatBRL, formatDate, getFrequencyLabel } from '../utils/formatters';
 import { InstallmentStatusBadge } from '../components/StatusBadge';
 
 export default function SalesPage({ onOpenNewSale }) {
+  const { user } = useAuth();
   const [sales, setSales] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedSale, setSelectedSale] = useState(null);
@@ -187,14 +189,16 @@ export default function SalesPage({ onOpenNewSale }) {
                           >
                             <Eye className="w-4 h-4" />
                           </button>
-                          <button
-                            onClick={() => handleDeleteSale(s.id, s.product_name)}
-                            title="Excluir venda"
-                            aria-label={`Excluir venda ${s.product_name}`}
-                            className="p-2 bg-rose-50 dark:bg-rose-500/10 hover:bg-rose-100 dark:hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 rounded-xl transition-colors"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          {user?.role !== 'OPERATOR' && (
+                            <button
+                              onClick={() => handleDeleteSale(s.id, s.product_name)}
+                              title="Excluir venda"
+                              aria-label={`Excluir venda ${s.product_name}`}
+                              className="p-2 bg-rose-50 dark:bg-rose-500/10 hover:bg-rose-100 dark:hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 rounded-xl transition-colors"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
                         </td>
                       </tr>
                     );

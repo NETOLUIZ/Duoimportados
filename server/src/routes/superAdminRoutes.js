@@ -32,9 +32,9 @@ router.use(sanitizeBody);
 // GET /api/super-admin/stats - Summary counts for the sellers overview cards
 router.get('/stats', async (req, res) => {
   try {
-    const totalRow = await queryOne(`SELECT COUNT(*) as count FROM users WHERE role = 'SELLER'`);
-    const activeRow = await queryOne(`SELECT COUNT(*) as count FROM users WHERE role = 'SELLER' AND status = 'ACTIVE'`);
-    const blockedRow = await queryOne(`SELECT COUNT(*) as count FROM users WHERE role = 'SELLER' AND status = 'BLOCKED'`);
+    const totalRow = await queryOne(`SELECT COUNT(*) as count FROM users WHERE role != 'SUPER_ADMIN' AND (owner_id IS NULL OR owner_id = id)`);
+    const activeRow = await queryOne(`SELECT COUNT(*) as count FROM users WHERE role != 'SUPER_ADMIN' AND (owner_id IS NULL OR owner_id = id) AND status = 'ACTIVE'`);
+    const blockedRow = await queryOne(`SELECT COUNT(*) as count FROM users WHERE role != 'SUPER_ADMIN' AND (owner_id IS NULL OR owner_id = id) AND status = 'BLOCKED'`);
 
     return res.json({
       total_sellers: parseInt(totalRow?.count || 0),
@@ -58,7 +58,7 @@ router.get('/sellers', async (req, res) => {
        FROM users u
        LEFT JOIN customers c ON c.owner_id = u.id
        LEFT JOIN sales s ON s.owner_id = u.id
-       WHERE u.role = 'SELLER'
+       WHERE u.role != 'SUPER_ADMIN' AND (u.owner_id IS NULL OR u.owner_id = u.id)
        GROUP BY u.id
        ORDER BY u.created_at DESC`
     );
@@ -147,7 +147,7 @@ router.put('/sellers/:id/status', async (req, res) => {
       return res.status(400).json({ error: 'Status inválido. Use ACTIVE ou BLOCKED.' });
     }
 
-    const seller = await queryOne("SELECT id, name FROM users WHERE id = ? AND role = 'SELLER'", [sellerId]);
+    const seller = await queryOne("SELECT id, name FROM users WHERE id = ? AND role != 'SUPER_ADMIN'", [sellerId]);
     if (!seller) {
       return res.status(404).json({ error: 'Vendedor não encontrado.' });
     }
@@ -178,7 +178,7 @@ router.put('/sellers/:id/reset-password', async (req, res) => {
       return res.status(400).json({ error: 'A nova senha deve ter no mínimo 6 caracteres.' });
     }
 
-    const seller = await queryOne("SELECT id FROM users WHERE id = ? AND role = 'SELLER'", [sellerId]);
+    const seller = await queryOne("SELECT id FROM users WHERE id = ? AND role != 'SUPER_ADMIN'", [sellerId]);
     if (!seller) {
       return res.status(404).json({ error: 'Vendedor não encontrado.' });
     }
@@ -204,7 +204,7 @@ router.delete('/sellers/:id', async (req, res) => {
     const sellerId = parseInt(req.params.id);
     if (isNaN(sellerId)) return res.status(400).json({ error: 'ID inválido.' });
 
-    const seller = await queryOne("SELECT id, name FROM users WHERE id = ? AND role = 'SELLER'", [sellerId]);
+    const seller = await queryOne("SELECT id, name FROM users WHERE id = ? AND role != 'SUPER_ADMIN'", [sellerId]);
     if (!seller) {
       return res.status(404).json({ error: 'Vendedor não encontrado.' });
     }

@@ -154,9 +154,15 @@ async function initDatabase() {
     )
   `);
 
-  // Migration: add subdomain to pre-existing users tables that predate this column
+  // Migration: add subdomain & owner_id to pre-existing users tables that predate these columns
   try {
     await query(`ALTER TABLE users ADD COLUMN subdomain VARCHAR(150)`);
+  } catch (err) {
+    // Column already exists — safe to ignore
+  }
+
+  try {
+    await query(`ALTER TABLE users ADD COLUMN owner_id INT`);
   } catch (err) {
     // Column already exists — safe to ignore
   }
@@ -339,6 +345,20 @@ async function initDatabase() {
       FOREIGN KEY (referrer_id) REFERENCES referrers(id) ON DELETE CASCADE,
       FOREIGN KEY (expense_id) REFERENCES expenses(id) ON DELETE SET NULL,
       UNIQUE (referrer_id, period)
+    )
+  `);
+
+  // 10. Audit Logs table
+  await query(`
+    CREATE TABLE IF NOT EXISTS audit_logs (
+      id ${idType},
+      owner_id INT NOT NULL,
+      user_id INT,
+      user_name VARCHAR(255) NOT NULL,
+      action VARCHAR(100) NOT NULL,
+      details TEXT,
+      ip_address VARCHAR(50),
+      created_at TIMESTAMP DEFAULT ${timestampDefault}
     )
   `);
 

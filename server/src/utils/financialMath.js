@@ -70,12 +70,15 @@ function calculateInterestCents(productValueCents, interestRateOrValue, isPercen
 }
 
 /**
- * Formats YYYY-MM-DD string to Date object at UTC midnight
+ * Formats YYYY-MM-DD string or Date object to Date object at UTC midnight
  */
 function parseLocalDate(dateStr) {
-  const parts = dateStr.split('T')[0].split('-');
-  if (parts.length === 3) {
-    return new Date(Date.UTC(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2])));
+  if (!dateStr) return new Date();
+  if (dateStr instanceof Date) return dateStr;
+  const str = String(dateStr);
+  const parts = str.split('T')[0].split('-');
+  if (parts.length === 3 && !isNaN(parts[0]) && !isNaN(parts[1]) && !isNaN(parts[2])) {
+    return new Date(Date.UTC(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10)));
   }
   return new Date(dateStr);
 }

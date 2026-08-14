@@ -6,6 +6,7 @@ const { sanitizeBody } = require('../middleware/securityMiddleware');
 const { paymentSchema } = require('../utils/validationSchemas');
 const { parseToCents, centsToDecimalString, calculateDailyLateFee, calculateDueDate, parseLocalDate } = require('../utils/financialMath');
 const { logSecurityEvent } = require('../utils/logger');
+const { logAudit } = require('../utils/auditLogger');
 
 router.use(verifyAuth);
 router.use(sanitizeBody);
@@ -196,6 +197,13 @@ router.post('/:id/payment', async (req, res) => {
         ip: req.ip
       });
 
+      await logAudit(req, 'PAGAMENTO_JUROS', {
+        message: `Pagamento de juros de R$ ${interestDecimal} no cliente "${installment.customer_name}" (Parcela #${installment.installment_number}). Parcela renovada para ${newDueDate}.`,
+        installmentId,
+        customerName: installment.customer_name,
+        amountPaid: interestDecimal
+      });
+
       return res.json({
         message: `Juros pago! Parcela renovada para ${newDueDate}.`,
         installment_id: installmentId,
@@ -266,6 +274,14 @@ router.post('/:id/payment', async (req, res) => {
       amountPaid: currentPaymentDecimal,
       status: newStatus,
       ip: req.ip
+    });
+
+    await logAudit(req, 'PAGAMENTO_REGISTRADO', {
+      message: `Pagamento de R$ ${currentPaymentDecimal} registrado no cliente "${installment.customer_name}" (Parcela #${installment.installment_number} - ${installment.product_name}). Status: ${newStatus}.`,
+      installmentId,
+      customerName: installment.customer_name,
+      amountPaid: currentPaymentDecimal,
+      status: newStatus
     });
 
     return res.json({
