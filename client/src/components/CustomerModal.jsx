@@ -16,7 +16,7 @@ export default function CustomerModal({ isOpen, customer, onClose, onSuccess }) 
     complement: '',
     neighborhood: '',
     city: '',
-    state: 'SP',
+    state: 'CE',
     referred_by: '',
     notes: ''
   });
@@ -36,7 +36,7 @@ export default function CustomerModal({ isOpen, customer, onClose, onSuccess }) 
           complement: customer.complement || '',
           neighborhood: customer.neighborhood || '',
           city: customer.city || '',
-          state: customer.state || 'SP',
+          state: customer.state || 'CE',
           referred_by: customer.referred_by || '',
           notes: customer.notes || ''
         });
@@ -50,7 +50,7 @@ export default function CustomerModal({ isOpen, customer, onClose, onSuccess }) 
           complement: '',
           neighborhood: '',
           city: '',
-          state: 'SP',
+          state: 'CE',
           referred_by: '',
           notes: ''
         });
