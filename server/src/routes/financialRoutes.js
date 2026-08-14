@@ -77,10 +77,26 @@ router.get('/overview', async (req, res) => {
       [ownerId]
     );
 
-    // Expenses in period
+    // Expenses in period — Despesas Fixas count as recurring monthly overhead and
+    // always apply regardless of the exact date they were registered on; only
+    // Despesas Variáveis are filtered strictly by expense_date within the range.
     const expensesRes = await queryOne(
-      `SELECT COALESCE(SUM(amount), 0) as total FROM expenses 
-       WHERE owner_id = ? AND CAST(expense_date AS TEXT) >= ? AND CAST(expense_date AS TEXT) <= ?`,
+      `SELECT COALESCE(SUM(amount), 0) as total FROM expenses
+       WHERE owner_id = ? AND (
+         expense_type = 'FIXA'
+         OR (CAST(expense_date AS TEXT) >= ? AND CAST(expense_date AS TEXT) <= ?)
+       )`,
+      [ownerId, startDate, endDate]
+    );
+
+    const fixedExpensesRes = await queryOne(
+      `SELECT COALESCE(SUM(amount), 0) as total FROM expenses WHERE owner_id = ? AND expense_type = 'FIXA'`,
+      [ownerId]
+    );
+
+    const variableExpensesRes = await queryOne(
+      `SELECT COALESCE(SUM(amount), 0) as total FROM expenses
+       WHERE owner_id = ? AND expense_type != 'FIXA' AND CAST(expense_date AS TEXT) >= ? AND CAST(expense_date AS TEXT) <= ?`,
       [ownerId, startDate, endDate]
     );
 
@@ -99,6 +115,8 @@ router.get('/overview', async (req, res) => {
     const recebidoCents = parseToCents(paymentsRes?.total);
     const aReceberCents = parseToCents(toReceiveRes?.total);
     const despesasCents = parseToCents(expensesRes?.total);
+    const despesasFixasCents = parseToCents(fixedExpensesRes?.total);
+    const despesasVariaveisCents = parseToCents(variableExpensesRes?.total);
     const atrasadoCents = parseToCents(overdueRes?.total);
 
     const lucroRealizadoCents = recebidoCents - despesasCents;
@@ -151,6 +169,8 @@ router.get('/overview', async (req, res) => {
         recebido: centsToDecimalString(recebidoCents),
         a_receber: centsToDecimalString(aReceberCents),
         despesas: centsToDecimalString(despesasCents),
+        despesas_fixas: centsToDecimalString(despesasFixasCents),
+        despesas_variaveis: centsToDecimalString(despesasVariaveisCents),
         lucro_realizado: centsToDecimalString(lucroRealizadoCents),
         juros_limpos: centsToDecimalString(jurosLimposCents),
         lucro_liquido_apurado: centsToDecimalString(lucroLiquidoApuradoCents),

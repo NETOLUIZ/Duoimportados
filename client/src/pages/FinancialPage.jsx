@@ -191,7 +191,9 @@ export default function FinancialPage() {
             <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-rose-100 dark:border-rose-500/20 shadow-sm">
               <p className="text-xs font-bold uppercase tracking-wider text-rose-700 dark:text-rose-400">Despesas no Período</p>
               <p className="text-2xl font-black text-rose-600 dark:text-rose-400 mt-1">{formatBRL(summary?.despesas)}</p>
-              <p className="text-xs text-rose-600/80 dark:text-rose-400/70 mt-1">Custos pagos</p>
+              <p className="text-xs text-rose-600/80 dark:text-rose-400/70 mt-1">
+                Fixas: {formatBRL(summary?.despesas_fixas)} · Variáveis: {formatBRL(summary?.despesas_variaveis)}
+              </p>
             </div>
 
             <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-emerald-100 dark:border-emerald-500/20 shadow-sm">

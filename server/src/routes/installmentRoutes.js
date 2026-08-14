@@ -133,7 +133,7 @@ router.post('/:id/payment', async (req, res) => {
 
     // Strict IDOR Check: Ensure installment belongs strictly to req.ownerId
     const installment = await queryOne(
-      `SELECT i.*, c.name as customer_name, s.product_name, s.payment_mode, s.interest_percent, s.product_value, s.installment_count
+      `SELECT i.*, c.name as customer_name, s.product_name, s.payment_mode, s.interest_percent, s.product_value, s.installment_count, s.late_fee_percent_per_day
        FROM installments i
        JOIN customers c ON c.id = i.customer_id
        JOIN sales s ON s.id = i.sale_id
@@ -149,23 +149,36 @@ router.post('/:id/payment', async (req, res) => {
     const paymentDateStr = payment_date || new Date().toISOString().split('T')[0];
 
     if (payment_type === 'INTEREST_ONLY') {
-      // Renewal payment: charge only the interest on THIS installment's share of the
+      // Renewal payment: charge the interest on THIS installment's share of the
       // original principal (product_value / installment_count) — NOT on i.amount,
       // which already has the sale's one-time interest baked in and would double-count it.
+      // If the installment is overdue, also add the daily late fee accrued up to the
+      // payment date (juros do mês + juros do dia), same base as the monthly interest.
       // Push the due date forward by one period, leaving the principal owed as-is.
       const principalShareCents = installment.installment_count > 0
         ? Math.round(parseToCents(installment.product_value) / installment.installment_count)
         : parseToCents(installment.product_value);
       const interestRate = parseFloat(installment.interest_percent || 0);
-      const interestCents = Math.round(principalShareCents * (interestRate / 100));
+      const monthlyInterestCents = Math.round(principalShareCents * (interestRate / 100));
+
+      const lateFeeRate = parseFloat(installment.late_fee_percent_per_day || 1.0);
+      const { daysLate, lateFeeCents } = calculateDailyLateFee(principalShareCents, installment.due_date, paymentDateStr, lateFeeRate);
+
+      const interestCents = monthlyInterestCents + lateFeeCents;
 
       if (interestCents <= 0) {
         return res.status(400).json({ error: 'Esta venda não possui percentual de juros configurado para renovação.' });
       }
 
       const interestDecimal = centsToDecimalString(interestCents);
+      const monthlyInterestDecimal = centsToDecimalString(monthlyInterestCents);
+      const lateFeeDecimal = centsToDecimalString(lateFeeCents);
       const currentDueDate = parseLocalDate(installment.due_date);
       const newDueDate = calculateDueDate(currentDueDate, 1, installment.payment_mode);
+
+      const breakdownNote = daysLate > 0
+        ? `Pagamento de juros (${interestRate}% = R$ ${monthlyInterestDecimal} + ${daysLate} dia(s) de atraso a ${lateFeeRate}%/dia = R$ ${lateFeeDecimal}) — parcela renovada para ${newDueDate}`
+        : `Pagamento somente dos juros (${interestRate}%) — parcela renovada para ${newDueDate}`;
 
       await query(
         `INSERT INTO payments
@@ -179,7 +192,7 @@ router.post('/:id/payment', async (req, res) => {
           paymentDateStr,
           'INTEREST_ONLY',
           req.user.userId,
-          notes || `Pagamento somente dos juros (${interestRate}%) — parcela renovada para ${newDueDate}`
+          notes || breakdownNote
         ]
       );
 
@@ -192,23 +205,31 @@ router.post('/:id/payment', async (req, res) => {
         ownerId,
         installmentId,
         interestPaid: interestDecimal,
+        monthlyInterest: monthlyInterestDecimal,
+        lateFee: lateFeeDecimal,
+        daysLate,
         previousDueDate: installment.due_date,
         newDueDate,
         ip: req.ip
       });
 
       await logAudit(req, 'PAGAMENTO_JUROS', {
-        message: `Pagamento de juros de R$ ${interestDecimal} no cliente "${installment.customer_name}" (Parcela #${installment.installment_number}). Parcela renovada para ${newDueDate}.`,
+        message: `Pagamento de juros de R$ ${interestDecimal} no cliente "${installment.customer_name}" (Parcela #${installment.installment_number})${daysLate > 0 ? ` [juro do mês R$ ${monthlyInterestDecimal} + atraso ${daysLate}d R$ ${lateFeeDecimal}]` : ''}. Parcela renovada para ${newDueDate}.`,
         installmentId,
         customerName: installment.customer_name,
         amountPaid: interestDecimal
       });
 
       return res.json({
-        message: `Juros pago! Parcela renovada para ${newDueDate}.`,
+        message: daysLate > 0
+          ? `Juros pago (R$ ${monthlyInterestDecimal} + R$ ${lateFeeDecimal} de atraso)! Parcela renovada para ${newDueDate}.`
+          : `Juros pago! Parcela renovada para ${newDueDate}.`,
         installment_id: installmentId,
         status: 'PENDENTE',
         amount_paid: interestDecimal,
+        monthly_interest: monthlyInterestDecimal,
+        late_fee: lateFeeDecimal,
+        days_late: daysLate,
         new_due_date: newDueDate
       });
     }

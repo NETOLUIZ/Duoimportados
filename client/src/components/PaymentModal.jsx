@@ -79,7 +79,11 @@ export default function PaymentModal({ isOpen, installment, onClose, onSuccess }
   // the sale's one-time interest baked in and would double-count it here.
   const productValue = parseFloat(installment.product_value || 0);
   const principalShare = installment.installment_count > 0 ? productValue / installment.installment_count : productValue;
-  const interestOnlyAmount = principalShare * (interestRate / 100);
+  const monthlyInterestAmount = principalShare * (interestRate / 100);
+  // If overdue, the interest-only renewal also carries the daily late fee accrued
+  // on the same principal share up to the payment date (juro do mês + juro do dia).
+  const interestOnlyLateFee = daysLate > 0 ? (principalShare * (lateFeeRate / 100)) * daysLate : 0;
+  const interestOnlyAmount = monthlyInterestAmount + interestOnlyLateFee;
   const renewedDueDate = addPeriod(dueDateStr, 1, installment.payment_mode);
   const canPayInterestOnly = interestRate > 0;
 
@@ -293,9 +297,18 @@ export default function PaymentModal({ isOpen, installment, onClose, onSuccess }
                     <span className="font-bold text-slate-800 dark:text-slate-100">{formatBRL(baseRemaining)}</span>
                   </div>
                   <div className="flex justify-between items-center text-slate-600 dark:text-slate-300">
-                    <span>Taxa de juros:</span>
-                    <span className="font-bold text-amber-700 dark:text-amber-400">{interestRate}%</span>
+                    <span>Juro do mês ({interestRate}%):</span>
+                    <span className="font-bold text-amber-700 dark:text-amber-400">{formatBRL(monthlyInterestAmount)}</span>
                   </div>
+                  {daysLate > 0 && (
+                    <div className="flex justify-between items-center text-rose-600 dark:text-rose-400 font-semibold text-xs pt-1 border-t border-amber-200 dark:border-amber-500/20">
+                      <span className="flex items-center gap-1">
+                        <AlertTriangle className="w-3.5 h-3.5" />
+                        Juro por {daysLate} dia(s) de atraso ({lateFeeRate}%/dia):
+                      </span>
+                      <span className="font-bold">+ {formatBRL(interestOnlyLateFee)}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between items-center text-base pt-2 border-t border-amber-300 dark:border-amber-500/30 font-black">
                     <span className="text-slate-800 dark:text-slate-100">Juros a Pagar Agora:</span>
                     <span className="text-amber-600 dark:text-amber-400 text-lg">{formatBRL(interestOnlyAmount)}</span>
