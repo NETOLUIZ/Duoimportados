@@ -177,19 +177,19 @@ export default function FinancialPage() {
           {/* Key Metric Grid - Row 1 */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
-              <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Total Investido (Produtos)</p>
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">qnto foi investido</p>
               <p className="text-2xl font-black text-slate-800 dark:text-slate-100 mt-1">{formatBRL(summary?.vendas_produtos || summary?.vendas)}</p>
               <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Valor dos produtos vendidos</p>
             </div>
 
             <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-purple-100 dark:border-purple-500/20 shadow-sm">
-              <p className="text-xs font-bold uppercase tracking-wider text-purple-700 dark:text-purple-400">Lucro em Juros (Limpos)</p>
+              <p className="text-xs font-bold uppercase tracking-wider text-purple-700 dark:text-purple-400">so os juros <span className="text-[10px] opacity-80">(limpos)</span></p>
               <p className="text-2xl font-black text-purple-600 dark:text-purple-400 mt-1">{formatBRL(summary?.juros_limpos)}</p>
               <p className="text-xs text-purple-600/80 dark:text-purple-400/70 mt-1">Ganho limpo de juros</p>
             </div>
 
             <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-rose-100 dark:border-rose-500/20 shadow-sm">
-              <p className="text-xs font-bold uppercase tracking-wider text-rose-700 dark:text-rose-400">Despesas no Período</p>
+              <p className="text-xs font-bold uppercase tracking-wider text-rose-700 dark:text-rose-400">despesas</p>
               <p className="text-2xl font-black text-rose-600 dark:text-rose-400 mt-1">{formatBRL(summary?.despesas)}</p>
               <p className="text-xs text-rose-600/80 dark:text-rose-400/70 mt-1">
                 Fixas: {formatBRL(summary?.despesas_fixas)} · Variáveis: {formatBRL(summary?.despesas_variaveis)}
@@ -197,7 +197,7 @@ export default function FinancialPage() {
             </div>
 
             <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-emerald-100 dark:border-emerald-500/20 shadow-sm">
-              <p className="text-xs font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">Recebido (Caixa)</p>
+              <p className="text-xs font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">coletados</p>
               <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">{formatBRL(summary?.recebido)}</p>
               <p className="text-xs text-emerald-600/80 dark:text-emerald-400/70 mt-1">Dinheiro efetivo entrado</p>
             </div>
@@ -206,19 +206,19 @@ export default function FinancialPage() {
           {/* Key Metric Grid - Row 2 (DRE & Resumo Apurado) */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
-              <p className="text-xs font-bold uppercase tracking-wider text-brand-blue">A Receber Total (Todos Clientes)</p>
+              <p className="text-xs font-bold uppercase tracking-wider text-brand-blue">valor de todos clintes + juros</p>
               <p className="text-2xl font-black text-brand-blue mt-1">{formatBRL(summary?.a_receber)}</p>
               <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Saldo pendente em produtos e juros</p>
             </div>
 
             <div className="bg-gradient-to-br from-slate-900 to-slate-800 dark:from-slate-900 dark:to-black p-5 rounded-2xl text-white shadow-md border border-slate-700">
-              <p className="text-xs font-bold uppercase tracking-wider text-emerald-400">Lucro Apurado (Juros - Despesas)</p>
+              <p className="text-xs font-bold uppercase tracking-wider text-emerald-400">meu lucro - as despesas</p>
               <p className="text-2xl font-black text-white mt-1">{formatBRL(summary?.lucro_liquido_apurado)}</p>
               <p className="text-xs text-slate-300 mt-1">Juros limpos ({formatBRL(summary?.juros_limpos)}) - Despesas ({formatBRL(summary?.despesas)})</p>
             </div>
 
             <div className="bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/30 p-5 rounded-2xl shadow-sm">
-              <p className="text-xs font-bold uppercase tracking-wider text-rose-800 dark:text-rose-300">Valores Atrasados Geral</p>
+              <p className="text-xs font-bold uppercase tracking-wider text-rose-800 dark:text-rose-300">pessoas que nao pagaram</p>
               <p className="text-2xl font-black text-rose-700 dark:text-rose-300 mt-1">{formatBRL(summary?.valores_atrasados)}</p>
               <p className="text-xs text-rose-600/80 dark:text-rose-400/70 mt-1">Parcelas vencidas em atraso</p>
             </div>
