@@ -193,7 +193,7 @@ router.post('/', async (req, res) => {
   }
 });
 
-// PUT /api/sales/:id - Edit Sale (only fields that don't require regenerating installments)
+// PUT /api/sales/:id - Edit Sale
 router.put('/:id', async (req, res) => {
   try {
     const ownerId = req.ownerId;
@@ -212,35 +212,107 @@ router.put('/:id', async (req, res) => {
       return res.status(400).json({ error: parseResult.error.errors[0]?.message || 'Dados de venda inválidos.' });
     }
 
-    const { product_name, interest_percent, late_fee_percent_per_day, sale_date } = parseResult.data;
+    const { product_name, product_value, interest_percent, late_fee_percent_per_day, sale_date, first_due_date } = parseResult.data;
     const interestPercentDecimal = parseFloat(interest_percent || 0).toFixed(2);
     const lateFeeRateDecimal = parseFloat(late_fee_percent_per_day || 1.0).toFixed(2);
 
+    const newProductValCents = parseToCents(product_value);
+    if (newProductValCents <= 0) {
+      return res.status(400).json({ error: 'O valor do produto deve ser maior que zero.' });
+    }
+
+    const existingProductValCents = parseToCents(existing.product_value);
+    const existingFirstDueStr = existing.first_due_date ? String(existing.first_due_date).split('T')[0] : null;
+    const valueOrDateChanged = newProductValCents !== existingProductValCents || existingFirstDueStr !== first_due_date;
+
+    if (!valueOrDateChanged) {
+      // Nothing that would require regenerating installments changed — lightweight update
+      await query(
+        `UPDATE sales SET product_name = ?, interest_percent = ?, late_fee_percent_per_day = ?, sale_date = ?
+         WHERE id = ? AND owner_id = ?`,
+        [product_name, interestPercentDecimal, lateFeeRateDecimal, sale_date, saleId, ownerId]
+      );
+
+      logSecurityEvent('SALE_UPDATED', { ownerId, saleId, ip: req.ip });
+      await logAudit(req, 'VENDA_EDITADA', {
+        message: `Venda #${saleId} editada por ${req.user.name}.`,
+        saleId,
+        before: {
+          productName: existing.product_name,
+          interestPercent: existing.interest_percent,
+          lateFeePercentPerDay: existing.late_fee_percent_per_day,
+          saleDate: existing.sale_date
+        },
+        after: {
+          productName: product_name,
+          interestPercent: interestPercentDecimal,
+          lateFeePercentPerDay: lateFeeRateDecimal,
+          saleDate: sale_date
+        }
+      });
+
+      return res.json({ message: 'Venda atualizada com sucesso!' });
+    }
+
+    // Value or first due date changed — installments need to be regenerated.
+    // Only safe if nothing has been paid against this sale yet.
+    const paidCheck = await queryOne(
+      `SELECT COUNT(*) as cnt FROM installments WHERE sale_id = ? AND owner_id = ? AND amount_paid > 0`,
+      [saleId, ownerId]
+    );
+    const paymentsCheck = await queryOne(
+      `SELECT COUNT(*) as cnt FROM payments p JOIN installments i ON i.id = p.installment_id WHERE i.sale_id = ? AND p.owner_id = ?`,
+      [saleId, ownerId]
+    );
+    if (parseInt(paidCheck?.cnt || 0) > 0 || parseInt(paymentsCheck?.cnt || 0) > 0) {
+      return res.status(400).json({
+        error: 'Não é possível alterar o valor ou a data pois já existem pagamentos registrados para esta venda. Exclua e recrie a venda se precisar mudar isso.'
+      });
+    }
+
+    const newInterestValCents = Math.round(newProductValCents * (parseFloat(interest_percent || 0) / 100));
+    const newTotalValCents = newProductValCents + newInterestValCents;
+
+    const productValDecimal = centsToDecimalString(newProductValCents);
+    const interestValDecimal = centsToDecimalString(newInterestValCents);
+    const totalValDecimal = centsToDecimalString(newTotalValCents);
+
     await query(
-      `UPDATE sales SET product_name = ?, interest_percent = ?, late_fee_percent_per_day = ?, sale_date = ?
+      `UPDATE sales SET
+        product_name = ?, product_value = ?, interest_value = ?, total_value = ?,
+        interest_percent = ?, late_fee_percent_per_day = ?, sale_date = ?, first_due_date = ?
        WHERE id = ? AND owner_id = ?`,
-      [product_name, interestPercentDecimal, lateFeeRateDecimal, sale_date, saleId, ownerId]
+      [product_name, productValDecimal, interestValDecimal, totalValDecimal, interestPercentDecimal, lateFeeRateDecimal, sale_date, first_due_date, saleId, ownerId]
     );
 
-    logSecurityEvent('SALE_UPDATED', { ownerId, saleId, ip: req.ip });
-    await logAudit(req, 'VENDA_EDITADA', {
-      message: `Venda #${saleId} editada por ${req.user.name}.`,
-      saleId,
-      before: {
-        productName: existing.product_name,
-        interestPercent: existing.interest_percent,
-        lateFeePercentPerDay: existing.late_fee_percent_per_day,
-        saleDate: existing.sale_date
-      },
-      after: {
-        productName: product_name,
-        interestPercent: interestPercentDecimal,
-        lateFeePercentPerDay: lateFeeRateDecimal,
-        saleDate: sale_date
+    await query('DELETE FROM installments WHERE sale_id = ? AND owner_id = ?', [saleId, ownerId]);
+
+    const generatedInstallments = splitInstallments(newTotalValCents, existing.installment_count, first_due_date, existing.payment_mode);
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    for (const inst of generatedInstallments) {
+      let initialStatus = 'PENDENTE';
+      if (inst.due_date < todayStr) {
+        initialStatus = 'ATRASADA';
       }
+
+      await query(
+        `INSERT INTO installments
+         (owner_id, sale_id, customer_id, installment_number, amount, due_date, status, amount_paid)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [ownerId, saleId, existing.customer_id, inst.installment_number, inst.amount_decimal, inst.due_date, initialStatus, '0.00']
+      );
+    }
+
+    logSecurityEvent('SALE_UPDATED_REGENERATED', { ownerId, saleId, ip: req.ip });
+    await logAudit(req, 'VENDA_EDITADA', {
+      message: `Venda #${saleId} editada por ${req.user.name} (valor/data alterados — parcelas regeneradas).`,
+      saleId,
+      before: { productValue: existing.product_value, firstDueDate: existingFirstDueStr, totalValue: existing.total_value },
+      after: { productValue: productValDecimal, firstDueDate: first_due_date, totalValue: totalValDecimal }
     });
 
-    return res.json({ message: 'Venda atualizada com sucesso!' });
+    return res.json({ message: 'Venda atualizada e parcelas regeneradas com sucesso!' });
   } catch (err) {
     console.error('Error updating sale:', err);
     return res.status(500).json({ error: 'Erro ao atualizar venda.' });

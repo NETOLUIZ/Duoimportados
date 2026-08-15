@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, ShoppingCart, AlertCircle, Calendar } from 'lucide-react';
+import { X, ShoppingCart, AlertCircle, Calendar, DollarSign } from 'lucide-react';
 import api from '../services/api';
 
 const inputClass =
@@ -8,9 +8,11 @@ const labelClass = 'block text-xs font-bold uppercase tracking-wider text-slate-
 
 export default function EditSaleModal({ isOpen, sale, onClose, onSuccess }) {
   const [productName, setProductName] = useState('');
+  const [productValue, setProductValue] = useState('');
   const [interestPercent, setInterestPercent] = useState('0');
   const [lateFeePercentPerDay, setLateFeePercentPerDay] = useState('1');
   const [saleDate, setSaleDate] = useState('');
+  const [firstDueDate, setFirstDueDate] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
@@ -18,9 +20,11 @@ export default function EditSaleModal({ isOpen, sale, onClose, onSuccess }) {
     if (isOpen && sale) {
       setError('');
       setProductName(sale.product_name || '');
+      setProductValue(String(sale.product_value ?? ''));
       setInterestPercent(String(sale.interest_percent ?? '0'));
       setLateFeePercentPerDay(String(sale.late_fee_percent_per_day ?? '1'));
       setSaleDate((sale.sale_date || '').split('T')[0].split(' ')[0] || '');
+      setFirstDueDate((sale.first_due_date || '').split('T')[0].split(' ')[0] || '');
     }
   }, [isOpen, sale]);
 
@@ -40,7 +44,16 @@ export default function EditSaleModal({ isOpen, sale, onClose, onSuccess }) {
     setError('');
 
     if (!saleDate) {
-      setError('Informe a data da venda.');
+      setError('Informe a data de início.');
+      return;
+    }
+    if (!firstDueDate) {
+      setError('Informe a data final (vencimento).');
+      return;
+    }
+    const val = parseFloat(productValue);
+    if (isNaN(val) || val <= 0) {
+      setError('O valor do produto deve ser maior que zero.');
       return;
     }
 
@@ -48,9 +61,11 @@ export default function EditSaleModal({ isOpen, sale, onClose, onSuccess }) {
       setSubmitting(true);
       await api.put(`/sales/${sale.id}`, {
         product_name: productName,
+        product_value: val.toFixed(2),
         interest_percent: parseFloat(interestPercent.replace(',', '.')) || 0,
         late_fee_percent_per_day: parseFloat(lateFeePercentPerDay.replace(',', '.')) || 0,
-        sale_date: saleDate
+        sale_date: saleDate,
+        first_due_date: firstDueDate
       });
       onSuccess();
       onClose();
@@ -98,7 +113,7 @@ export default function EditSaleModal({ isOpen, sale, onClose, onSuccess }) {
           )}
 
           <div className="p-3 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 rounded-xl text-amber-800 dark:text-amber-300 text-xs font-medium">
-            Valor do produto, parcelas e modalidade não podem ser alterados aqui pois as parcelas já foram geradas (e podem ter pagamentos registrados). Para mudar isso, exclua a venda e registre uma nova.
+            Quantidade de parcelas e modalidade não podem ser alteradas aqui. Se já houver algum pagamento registrado para esta venda, valor e datas também ficam bloqueados (nesse caso, exclua e registre uma nova venda).
           </div>
 
           <div>
@@ -114,18 +129,53 @@ export default function EditSaleModal({ isOpen, sale, onClose, onSuccess }) {
           </div>
 
           <div>
-            <label htmlFor="edit-sale-date" className={labelClass}>
-              <Calendar className="w-3.5 h-3.5 inline mr-1 -mt-0.5" />
-              Data da Venda *
+            <label htmlFor="edit-sale-value" className={labelClass}>
+              <DollarSign className="w-3.5 h-3.5 inline mr-1 -mt-0.5" />
+              Valor do Produto (R$) *
             </label>
             <input
-              id="edit-sale-date"
-              type="date"
-              value={saleDate}
-              onChange={(e) => setSaleDate(e.target.value)}
+              id="edit-sale-value"
+              type="number"
+              inputMode="decimal"
+              step="0.01"
+              min="0.01"
+              value={productValue}
+              onChange={(e) => setProductValue(e.target.value)}
+              placeholder="0.00"
               required
-              className={`${inputClass} font-semibold`}
+              className={`${inputClass} text-base font-bold text-emerald-700 dark:text-emerald-400`}
             />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="edit-sale-date" className={labelClass}>
+                <Calendar className="w-3.5 h-3.5 inline mr-1 -mt-0.5" />
+                Data Início *
+              </label>
+              <input
+                id="edit-sale-date"
+                type="date"
+                value={saleDate}
+                onChange={(e) => setSaleDate(e.target.value)}
+                required
+                className={`${inputClass} font-semibold`}
+              />
+            </div>
+            <div>
+              <label htmlFor="edit-sale-due-date" className={labelClass}>
+                <Calendar className="w-3.5 h-3.5 inline mr-1 -mt-0.5" />
+                Data Final *
+              </label>
+              <input
+                id="edit-sale-due-date"
+                type="date"
+                value={firstDueDate}
+                onChange={(e) => setFirstDueDate(e.target.value)}
+                required
+                className={`${inputClass} font-semibold`}
+              />
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
