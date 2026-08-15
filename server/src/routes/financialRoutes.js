@@ -77,21 +77,17 @@ router.get('/overview', async (req, res) => {
       [ownerId]
     );
 
-    // Expenses in period — Despesas Fixas count as recurring monthly overhead and
-    // always apply regardless of the exact date they were registered on; only
-    // Despesas Variáveis are filtered strictly by expense_date within the range.
+    // Expenses in period — filtered strictly by expense_date within the selected date range
     const expensesRes = await queryOne(
       `SELECT COALESCE(SUM(amount), 0) as total FROM expenses
-       WHERE owner_id = ? AND (
-         expense_type = 'FIXA'
-         OR (CAST(expense_date AS TEXT) >= ? AND CAST(expense_date AS TEXT) <= ?)
-       )`,
+       WHERE owner_id = ? AND CAST(expense_date AS TEXT) >= ? AND CAST(expense_date AS TEXT) <= ?`,
       [ownerId, startDate, endDate]
     );
 
     const fixedExpensesRes = await queryOne(
-      `SELECT COALESCE(SUM(amount), 0) as total FROM expenses WHERE owner_id = ? AND expense_type = 'FIXA'`,
-      [ownerId]
+      `SELECT COALESCE(SUM(amount), 0) as total FROM expenses
+       WHERE owner_id = ? AND expense_type = 'FIXA' AND CAST(expense_date AS TEXT) >= ? AND CAST(expense_date AS TEXT) <= ?`,
+      [ownerId, startDate, endDate]
     );
 
     const variableExpensesRes = await queryOne(
