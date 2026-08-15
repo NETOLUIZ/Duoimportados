@@ -6,6 +6,7 @@ import { formatBRL, formatDate } from '../utils/formatters';
 import { useTheme } from '../context/ThemeContext';
 
 const PERIODS = [
+  { id: 'todas', label: 'Todas as Datas' },
   { id: 'hoje', label: 'Hoje' },
   { id: 'ultimos_7_dias', label: 'Últimos 7 dias' },
   { id: 'este_mes', label: 'Este mês' },

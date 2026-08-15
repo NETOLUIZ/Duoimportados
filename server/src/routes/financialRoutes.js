@@ -14,7 +14,9 @@ function getDateRange(period, customStart, customEnd) {
 
   const todayStr = now.toISOString().split('T')[0];
 
-  if (period === 'hoje') {
+  if (period === 'todas') {
+    return { startDate: '0001-01-01', endDate: '9999-12-31' };
+  } else if (period === 'hoje') {
     return { startDate: todayStr, endDate: todayStr };
   } else if (period === 'ultimos_7_dias') {
     start.setUTCDate(start.getUTCDate() - 6);
