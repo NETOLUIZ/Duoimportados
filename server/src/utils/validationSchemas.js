@@ -40,11 +40,13 @@ const saleSchema = z.object({
   sale_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Data da venda inválida (AAAA-MM-DD)').optional().nullable()
 });
 
-// 3b. Sale Edit Schema. product_value/first_due_date changing product_value or
-// first_due_date makes the route regenerate installments — the route itself
-// blocks that regeneration if any payment already exists for the sale, since
-// that would corrupt already-registered payment history. installment_count/
-// payment_mode stay fixed (changing those needs the full "novo checkout" flow).
+// 3b. Sale Edit Schema. Changing product_value or first_due_date makes the
+// route regenerate installments (fresh, unpaid) — installment_count/payment_mode
+// stay fixed (changing those needs the full "novo checkout" flow). Renegotiation
+// use case: seller lowers product_value (e.g. debt of 7000 renegotiated down to
+// 5000, interest recalculated on the new 5000) and mark_paid_amount records the
+// difference actually received (2000) as an already-paid payment on the
+// freshly regenerated installments.
 const saleEditSchema = z.object({
   product_name: z.string().trim().optional().nullable()
     .transform(val => (val && val.length > 0 ? val : 'Produto não especificado')),
@@ -52,7 +54,9 @@ const saleEditSchema = z.object({
   interest_percent: z.number().nonnegative().optional().default(0),
   late_fee_percent_per_day: z.number().nonnegative().optional().default(1.0),
   sale_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Data da venda inválida (AAAA-MM-DD)'),
-  first_due_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Data de vencimento inválida (AAAA-MM-DD)')
+  first_due_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Data de vencimento inválida (AAAA-MM-DD)'),
+  mark_paid_amount: z.union([z.string(), z.number()]).optional().nullable()
+    .transform(val => (val === null || val === undefined || val === '' ? '0' : String(val)))
 });
 
 // 4. Payment Schemas

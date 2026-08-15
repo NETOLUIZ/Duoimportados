@@ -212,7 +212,7 @@ router.put('/:id', async (req, res) => {
       return res.status(400).json({ error: parseResult.error.errors[0]?.message || 'Dados de venda inválidos.' });
     }
 
-    const { product_name, product_value, interest_percent, late_fee_percent_per_day, sale_date, first_due_date } = parseResult.data;
+    const { product_name, product_value, interest_percent, late_fee_percent_per_day, sale_date, first_due_date, mark_paid_amount } = parseResult.data;
     const interestPercentDecimal = parseFloat(interest_percent || 0).toFixed(2);
     const lateFeeRateDecimal = parseFloat(late_fee_percent_per_day || 1.0).toFixed(2);
 
@@ -297,30 +297,58 @@ router.put('/:id', async (req, res) => {
     const generatedInstallments = splitInstallments(newTotalValCents, existing.installment_count, first_due_date, existing.payment_mode);
     const todayStr = new Date().toISOString().split('T')[0];
 
+    // Renegotiation flow: the amount already collected (e.g. debt lowered from
+    // 7000 to 5000, 2000 actually received) gets applied against the freshly
+    // regenerated installments in order, same as a normal payment would.
+    let markPaidRemainingCents = Math.min(parseToCents(mark_paid_amount || 0), newTotalValCents);
+    const appliedPayments = [];
+
     for (const inst of generatedInstallments) {
+      const instAmountCents = parseToCents(inst.amount_decimal);
+      const appliedCents = Math.min(markPaidRemainingCents, instAmountCents);
+      markPaidRemainingCents -= appliedCents;
+
       let initialStatus = 'PENDENTE';
-      if (inst.due_date < todayStr) {
+      if (appliedCents >= instAmountCents) {
+        initialStatus = 'PAGA';
+      } else if (inst.due_date < todayStr) {
         initialStatus = 'ATRASADA';
       }
 
-      await query(
+      const amountPaidDecimal = centsToDecimalString(appliedCents);
+
+      const instResult = await query(
         `INSERT INTO installments
-         (owner_id, sale_id, customer_id, installment_number, amount, due_date, status, amount_paid)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [ownerId, saleId, existing.customer_id, inst.installment_number, inst.amount_decimal, inst.due_date, initialStatus, '0.00']
+         (owner_id, sale_id, customer_id, installment_number, amount, due_date, status, amount_paid, paid_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [ownerId, saleId, existing.customer_id, inst.installment_number, inst.amount_decimal, inst.due_date, initialStatus, amountPaidDecimal, initialStatus === 'PAGA' ? todayStr : null]
       );
+
+      if (appliedCents > 0) {
+        const newInstallmentId = instResult[0]?.id;
+        await query(
+          `INSERT INTO payments
+           (owner_id, installment_id, customer_id, amount_paid, payment_date, payment_type, registered_by_user_id, notes)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+          [ownerId, newInstallmentId, existing.customer_id, amountPaidDecimal, todayStr, 'FULL', req.user.userId, `Valor já recebido na renegociação da venda #${saleId} (${req.user.name})`]
+        );
+        appliedPayments.push({ installmentNumber: inst.installment_number, amount: amountPaidDecimal });
+      }
     }
 
     const wipedPaymentsNote = existingPayments.length > 0
       ? ` ATENÇÃO: ${existingPayments.length} pagamento(s) somando R$ ${centsToDecimalString(existingPaymentsTotal)} que estavam ligados às parcelas antigas desta venda foram removidos junto (parcelas foram recriadas do zero).`
       : '';
+    const markPaidNote = appliedPayments.length > 0
+      ? ` R$ ${centsToDecimalString(parseToCents(mark_paid_amount || 0) - markPaidRemainingCents)} registrado como já recebido nesta renegociação.`
+      : '';
 
-    logSecurityEvent('SALE_UPDATED_REGENERATED', { ownerId, saleId, wipedPaymentsCents: existingPaymentsTotal, ip: req.ip });
+    logSecurityEvent('SALE_UPDATED_REGENERATED', { ownerId, saleId, wipedPaymentsCents: existingPaymentsTotal, markPaidCents: parseToCents(mark_paid_amount || 0), ip: req.ip });
     await logAudit(req, 'VENDA_EDITADA', {
-      message: `Venda #${saleId} editada por ${req.user.name} (valor/data alterados — parcelas regeneradas).${wipedPaymentsNote}`,
+      message: `Venda #${saleId} editada por ${req.user.name} (valor/data alterados — parcelas regeneradas).${wipedPaymentsNote}${markPaidNote}`,
       saleId,
       before: { productValue: existing.product_value, firstDueDate: existingFirstDueStr, totalValue: existing.total_value, payments: existingPayments },
-      after: { productValue: productValDecimal, firstDueDate: first_due_date, totalValue: totalValDecimal }
+      after: { productValue: productValDecimal, firstDueDate: first_due_date, totalValue: totalValDecimal, markPaidAmount: mark_paid_amount }
     });
 
     return res.json({ message: 'Venda atualizada e parcelas regeneradas com sucesso!' });

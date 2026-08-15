@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, ShoppingCart, AlertCircle, Calendar, DollarSign } from 'lucide-react';
 import api from '../services/api';
+import { formatBRL } from '../utils/formatters';
 
 const inputClass =
   'w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-100 text-sm rounded-xl p-3 min-h-[44px] font-medium placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:ring-2 focus:ring-brand-blue focus:bg-white dark:focus:bg-slate-900 focus:outline-none transition-colors';
@@ -13,6 +14,7 @@ export default function EditSaleModal({ isOpen, sale, onClose, onSuccess }) {
   const [lateFeePercentPerDay, setLateFeePercentPerDay] = useState('1');
   const [saleDate, setSaleDate] = useState('');
   const [firstDueDate, setFirstDueDate] = useState('');
+  const [markPaidAmount, setMarkPaidAmount] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
@@ -25,6 +27,7 @@ export default function EditSaleModal({ isOpen, sale, onClose, onSuccess }) {
       setLateFeePercentPerDay(String(sale.late_fee_percent_per_day ?? '1'));
       setSaleDate((sale.sale_date || '').split('T')[0].split(' ')[0] || '');
       setFirstDueDate((sale.first_due_date || '').split('T')[0].split(' ')[0] || '');
+      setMarkPaidAmount('');
     }
   }, [isOpen, sale]);
 
@@ -38,6 +41,10 @@ export default function EditSaleModal({ isOpen, sale, onClose, onSuccess }) {
   }, [isOpen, onClose]);
 
   if (!isOpen || !sale) return null;
+
+  const originalProductValue = parseFloat(sale.product_value || 0);
+  const enteredProductValue = parseFloat(productValue) || 0;
+  const valueReduction = Math.max(0, originalProductValue - enteredProductValue);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -65,7 +72,8 @@ export default function EditSaleModal({ isOpen, sale, onClose, onSuccess }) {
         interest_percent: parseFloat(interestPercent.replace(',', '.')) || 0,
         late_fee_percent_per_day: parseFloat(lateFeePercentPerDay.replace(',', '.')) || 0,
         sale_date: saleDate,
-        first_due_date: firstDueDate
+        first_due_date: firstDueDate,
+        mark_paid_amount: markPaidAmount ? (parseFloat(markPaidAmount.replace(',', '.')) || 0).toFixed(2) : '0'
       });
       onSuccess();
       onClose();
@@ -146,6 +154,39 @@ export default function EditSaleModal({ isOpen, sale, onClose, onSuccess }) {
               className={`${inputClass} text-base font-bold text-emerald-700 dark:text-emerald-400`}
             />
           </div>
+
+          {valueReduction > 0 && (
+            <div className="p-3 bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/30 rounded-xl space-y-2">
+              <p className="text-xs text-blue-800 dark:text-blue-300 font-medium">
+                Valor reduzido de {formatBRL(originalProductValue)} para {formatBRL(enteredProductValue)} — diferença de {formatBRL(valueReduction)}.
+                Se parte disso já foi recebida do cliente, registre abaixo (os juros passam a incidir só sobre o novo valor).
+              </p>
+              <div>
+                <label htmlFor="edit-sale-mark-paid" className={labelClass}>Já Recebido Nesta Renegociação (R$)</label>
+                <div className="flex gap-2">
+                  <input
+                    id="edit-sale-mark-paid"
+                    type="number"
+                    inputMode="decimal"
+                    step="0.01"
+                    min="0"
+                    max={valueReduction}
+                    value={markPaidAmount}
+                    onChange={(e) => setMarkPaidAmount(e.target.value)}
+                    placeholder="0.00"
+                    className={`${inputClass} font-bold text-blue-700 dark:text-blue-400`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setMarkPaidAmount(valueReduction.toFixed(2))}
+                    className="px-3 min-h-[44px] rounded-xl bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300 text-xs font-bold whitespace-nowrap"
+                  >
+                    Usar diferença
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
