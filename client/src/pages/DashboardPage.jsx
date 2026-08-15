@@ -83,89 +83,9 @@ export default function DashboardPage({ onOpenNewSale, onOpenPayment }) {
         </button>
       </div>
 
-      {/* 8 Core Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Card 1: Vendas */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Vendas Totais</p>
-            <p className="text-2xl font-black text-slate-800 dark:text-slate-100 mt-1">{formatBRL(summary?.vendas)}</p>
-            <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Valor acumulado</p>
-          </div>
-          <div className="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-500/10 text-brand-blue flex items-center justify-center flex-shrink-0">
-            <ShoppingCart className="w-6 h-6" />
-          </div>
-        </div>
-
-        {/* Card 2: Recebido */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-emerald-100 dark:border-emerald-500/20 shadow-sm flex items-center justify-between">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">Recebido</p>
-            <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">{formatBRL(summary?.recebido)}</p>
-            <p className="text-xs text-emerald-600/80 dark:text-emerald-400/70 mt-1">Total quitado em caixa</p>
-          </div>
-          <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center flex-shrink-0">
-            <CheckCircle2 className="w-6 h-6" />
-          </div>
-        </div>
-
-        {/* Card 3: A Receber */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">A Receber</p>
-            <p className="text-2xl font-black text-brand-blue mt-1">{formatBRL(summary?.a_receber)}</p>
-            <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Parcelas pendentes</p>
-          </div>
-          <div className="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-500/10 text-brand-blue flex items-center justify-center flex-shrink-0">
-            <Clock className="w-6 h-6" />
-          </div>
-        </div>
-
-        {/* Card 4: Despesas */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-rose-100 dark:border-rose-500/20 shadow-sm flex items-center justify-between">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-rose-700 dark:text-rose-400">Despesas</p>
-            <p className="text-2xl font-black text-rose-600 dark:text-rose-400 mt-1">{formatBRL(summary?.despesas)}</p>
-            <p className="text-xs text-rose-600/80 dark:text-rose-400/70 mt-1">Custos operacionais</p>
-          </div>
-          <div className="w-12 h-12 rounded-2xl bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center flex-shrink-0">
-            <DollarSign className="w-6 h-6" />
-          </div>
-        </div>
-
-        {/* Card 5: Lucro */}
-        <div className={`rounded-2xl p-5 shadow-sm flex items-center justify-between ${
-          isProfitPositive
-            ? 'bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-500/20'
-            : 'bg-rose-50 dark:bg-rose-500/10 border-2 border-rose-300 dark:border-rose-500/30'
-        }`}>
-          <div>
-            <p className={`text-xs font-bold uppercase tracking-wider ${isProfitPositive ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-800 dark:text-rose-300'}`}>
-              Lucro Realizado
-            </p>
-            <p className={`text-2xl font-black mt-1 ${isProfitPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-300'}`}>
-              {formatBRL(summary?.lucro)}
-            </p>
-            <p className={`text-xs mt-1 ${isProfitPositive ? 'text-slate-400 dark:text-slate-500' : 'text-rose-800/80 dark:text-rose-300/80'}`}>(Recebido - Despesas)</p>
-          </div>
-          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 ${isProfitPositive ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-rose-600 text-white shadow-md'}`}>
-            <TrendingUp className="w-6 h-6" />
-          </div>
-        </div>
-
-        {/* Card 6: Clientes */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Clientes Ativos</p>
-            <p className="text-2xl font-black text-slate-800 dark:text-slate-100 mt-1">{summary?.clientes_ativos || 0}</p>
-            <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Cadastrados</p>
-          </div>
-          <div className="w-12 h-12 rounded-2xl bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center flex-shrink-0">
-            <Users className="w-6 h-6" />
-          </div>
-        </div>
-
-        {/* Card 7: Atrasados */}
+      {/* Attention Cards: Parcelas Atrasadas e Vencendo em 2 dias */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {/* Card 1: Atrasados */}
         <div className="bg-rose-50 dark:bg-rose-500/10 border-2 border-rose-300 dark:border-rose-500/30 rounded-2xl p-5 shadow-sm flex items-center justify-between">
           <div>
             <p className="text-xs font-black uppercase tracking-wider text-rose-800 dark:text-rose-300 flex items-center gap-1.5">
@@ -180,7 +100,7 @@ export default function DashboardPage({ onOpenNewSale, onOpenPayment }) {
           </div>
         </div>
 
-        {/* Card 8: Vencendo em 2 dias */}
+        {/* Card 2: Vencendo em 2 dias */}
         <div className="bg-amber-50 dark:bg-amber-500/10 border-2 border-amber-300 dark:border-amber-500/30 rounded-2xl p-5 shadow-sm flex items-center justify-between">
           <div>
             <p className="text-xs font-black uppercase tracking-wider text-amber-900 dark:text-amber-300 flex items-center gap-1.5">
