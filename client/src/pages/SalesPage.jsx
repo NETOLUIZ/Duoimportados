@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ShoppingCart, Plus, Trash2, Eye, Edit, X, Search, CalendarClock } from 'lucide-react';
+import { ShoppingCart, Plus, Trash2, Eye, Edit, X, Search, Calendar, Filter } from 'lucide-react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { formatBRL, formatDate, getFrequencyLabel } from '../utils/formatters';
@@ -13,10 +13,18 @@ const STATUS_FILTERS = [
 ];
 
 const MODE_FILTERS = [
-  { id: '', label: 'Todas' },
+  { id: '', label: 'Todas Modalidades' },
   { id: 'DIARIA', label: 'Diária' },
   { id: 'QUINZENAL', label: 'Quinzenal' },
   { id: 'MENSAL', label: 'Mensal' },
+];
+
+const PERIOD_FILTERS = [
+  { id: '', label: 'Todas as Datas' },
+  { id: 'hoje', label: 'Hoje' },
+  { id: 'este_mes', label: 'Este Mês' },
+  { id: 'mes_anterior', label: 'Mês Anterior' },
+  { id: 'ultimos_30_dias', label: 'Últimos 30 Dias' },
 ];
 
 export default function SalesPage({ onOpenNewSale }) {
@@ -28,6 +36,7 @@ export default function SalesPage({ onOpenNewSale }) {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [modeFilter, setModeFilter] = useState('');
+  const [periodFilter, setPeriodFilter] = useState('');
 
   const fetchSales = async () => {
     try {
@@ -79,8 +88,36 @@ export default function SalesPage({ onOpenNewSale }) {
 
     const matchesMode = !modeFilter || s.payment_mode === modeFilter;
 
-    return matchesSearch && matchesStatus && matchesMode;
+    let matchesPeriod = true;
+    if (periodFilter && s.sale_date) {
+      const cleanDateStr = String(s.sale_date).split('T')[0];
+      const now = new Date();
+      const todayStr = now.toISOString().split('T')[0];
+
+      if (periodFilter === 'hoje') {
+        matchesPeriod = cleanDateStr === todayStr;
+      } else if (periodFilter === 'este_mes') {
+        const year = now.getUTCFullYear();
+        const month = String(now.getUTCMonth() + 1).padStart(2, '0');
+        matchesPeriod = cleanDateStr.startsWith(`${year}-${month}`);
+      } else if (periodFilter === 'mes_anterior') {
+        const prevMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1));
+        const year = prevMonth.getUTCFullYear();
+        const month = String(prevMonth.getUTCMonth() + 1).padStart(2, '0');
+        matchesPeriod = cleanDateStr.startsWith(`${year}-${month}`);
+      } else if (periodFilter === 'ultimos_30_dias') {
+        const start = new Date();
+        start.setUTCDate(start.getUTCDate() - 29);
+        const startStr = start.toISOString().split('T')[0];
+        matchesPeriod = cleanDateStr >= startStr && cleanDateStr <= todayStr;
+      }
+    }
+
+    return matchesSearch && matchesStatus && matchesMode && matchesPeriod;
   });
+
+  const totalFilteredValue = filteredSales.reduce((acc, curr) => acc + parseFloat(curr.total_value || 0), 0);
+  const totalFilteredPaid = filteredSales.reduce((acc, curr) => acc + parseFloat(curr.total_paid || 0), 0);
 
   return (
     <div className="p-4 sm:p-6 space-y-5 sm:space-y-6 w-full max-w-full">
@@ -102,48 +139,94 @@ export default function SalesPage({ onOpenNewSale }) {
         </button>
       </div>
 
-      {/* Filters & Search */}
-      <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
-        {/* Search */}
-        <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-2.5 rounded-xl w-full md:w-80">
-          <Search className="w-4 h-4 text-slate-400 dark:text-slate-500 flex-shrink-0" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar por cliente ou produto..."
-            className="w-full bg-transparent text-sm text-slate-800 dark:text-slate-100 font-medium focus:outline-none"
-          />
+      {/* Summary of Filtered Results */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+          <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Vendas Filtradas</p>
+          <p className="text-xl font-black text-slate-800 dark:text-slate-100 mt-0.5">{filteredSales.length} {filteredSales.length === 1 ? 'venda' : 'vendas'}</p>
         </div>
+        <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+          <p className="text-xs font-bold uppercase tracking-wider text-brand-blue">Total do Período/Filtro</p>
+          <p className="text-xl font-black text-brand-blue mt-0.5">{formatBRL(totalFilteredValue)}</p>
+        </div>
+        <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-emerald-100 dark:border-emerald-500/20 shadow-sm">
+          <p className="text-xs font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">Total Recebido (Filtrado)</p>
+          <p className="text-xl font-black text-emerald-600 dark:text-emerald-400 mt-0.5">{formatBRL(totalFilteredPaid)}</p>
+        </div>
+      </div>
 
-        {/* Filters */}
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="flex bg-slate-100 dark:bg-slate-800 p-1.5 rounded-xl gap-1 border border-slate-200 dark:border-slate-700 overflow-x-auto">
-            {STATUS_FILTERS.map((f) => (
-              <button
-                key={f.id}
-                onClick={() => setStatusFilter(f.id)}
-                className={`px-3 py-1.5 min-h-[36px] rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
-                  statusFilter === f.id ? f.activeClass : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
-                }`}
-              >
-                {f.label}
-              </button>
-            ))}
+      {/* Filters & Search */}
+      <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
+        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+          {/* Search */}
+          <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-2.5 rounded-xl w-full md:w-80">
+            <Search className="w-4 h-4 text-slate-400 dark:text-slate-500 flex-shrink-0" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar por cliente ou produto..."
+              className="w-full bg-transparent text-sm text-slate-800 dark:text-slate-100 font-medium focus:outline-none"
+            />
           </div>
 
-          <div className="flex bg-slate-100 dark:bg-slate-800 p-1.5 rounded-xl gap-1 border border-slate-200 dark:border-slate-700 overflow-x-auto">
-            {MODE_FILTERS.map((m) => (
-              <button
-                key={m.id}
-                onClick={() => setModeFilter(m.id)}
-                className={`px-3 py-1.5 min-h-[36px] rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
-                  modeFilter === m.id ? 'bg-brand-blue text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
-                }`}
-              >
-                {m.label}
-              </button>
-            ))}
+          {/* Period Filter Tabs */}
+          <div className="flex items-center gap-2 overflow-x-auto">
+            <span className="text-xs font-bold text-slate-400 uppercase flex-shrink-0 flex items-center gap-1">
+              <Calendar className="w-3.5 h-3.5 text-brand-blue" /> Período:
+            </span>
+            <div className="flex bg-slate-100 dark:bg-slate-800 p-1.5 rounded-xl gap-1 border border-slate-200 dark:border-slate-700 overflow-x-auto">
+              {PERIOD_FILTERS.map((p) => (
+                <button
+                  key={p.id}
+                  onClick={() => setPeriodFilter(p.id)}
+                  className={`px-3 py-1.5 min-h-[36px] rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
+                    periodFilter === p.id ? 'bg-brand-blue text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Secondary Filter Row: Status & Modality */}
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-slate-400 uppercase flex-shrink-0 flex items-center gap-1">
+              <Filter className="w-3.5 h-3.5 text-slate-400" /> Status:
+            </span>
+            <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl gap-1 border border-slate-200 dark:border-slate-700 overflow-x-auto">
+              {STATUS_FILTERS.map((f) => (
+                <button
+                  key={f.id}
+                  onClick={() => setStatusFilter(f.id)}
+                  className={`px-3 py-1.5 min-h-[32px] rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
+                    statusFilter === f.id ? f.activeClass : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-slate-400 uppercase flex-shrink-0">Modalidade:</span>
+            <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl gap-1 border border-slate-200 dark:border-slate-700 overflow-x-auto">
+              {MODE_FILTERS.map((m) => (
+                <button
+                  key={m.id}
+                  onClick={() => setModeFilter(m.id)}
+                  className={`px-3 py-1.5 min-h-[32px] rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
+                    modeFilter === m.id ? 'bg-brand-blue text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                >
+                  {m.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </div>
