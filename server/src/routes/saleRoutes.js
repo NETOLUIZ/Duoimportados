@@ -222,7 +222,17 @@ router.put('/:id', async (req, res) => {
     }
 
     const existingProductValCents = parseToCents(existing.product_value);
-    const existingFirstDueStr = existing.first_due_date ? String(existing.first_due_date).split('T')[0] : null;
+    // Postgres returns DATE columns as JS Date objects (SQLite returns plain
+    // strings) — String(dateObject) produces a full "Wed Sep 13 2026 00:00:00
+    // GMT+..." toString(), which never equals the "YYYY-MM-DD" from the
+    // request body. That always made this look "changed" and forced an
+    // installment regeneration on every single edit, even ones that only
+    // touched product_name or interest_percent.
+    const existingFirstDueStr = existing.first_due_date
+      ? (existing.first_due_date instanceof Date
+          ? existing.first_due_date.toISOString().split('T')[0]
+          : String(existing.first_due_date).split('T')[0])
+      : null;
     const valueOrDateChanged = newProductValCents !== existingProductValCents || existingFirstDueStr !== first_due_date;
 
     if (!valueOrDateChanged) {
@@ -254,21 +264,18 @@ router.put('/:id', async (req, res) => {
       return res.json({ message: 'Venda atualizada com sucesso!' });
     }
 
-    // Value or first due date changed — installments need to be regenerated.
-    // Only safe if nothing has been paid against this sale yet.
-    const paidCheck = await queryOne(
-      `SELECT COUNT(*) as cnt FROM installments WHERE sale_id = ? AND owner_id = ? AND amount_paid > 0`,
+    // Value or first due date changed — installments get regenerated. Deleting
+    // them cascades and deletes any payments already tied to them, so before
+    // that happens we snapshot what existed into the audit trail — the record
+    // stays discoverable in Auditoria even though the rows themselves are gone.
+    const existingPayments = await query(
+      `SELECT p.amount_paid, p.payment_type, p.payment_date FROM payments p
+       JOIN installments i ON i.id = p.installment_id
+       WHERE i.sale_id = ? AND p.owner_id = ?
+       ORDER BY p.id ASC`,
       [saleId, ownerId]
     );
-    const paymentsCheck = await queryOne(
-      `SELECT COUNT(*) as cnt FROM payments p JOIN installments i ON i.id = p.installment_id WHERE i.sale_id = ? AND p.owner_id = ?`,
-      [saleId, ownerId]
-    );
-    if (parseInt(paidCheck?.cnt || 0) > 0 || parseInt(paymentsCheck?.cnt || 0) > 0) {
-      return res.status(400).json({
-        error: 'Não é possível alterar o valor ou a data pois já existem pagamentos registrados para esta venda. Exclua e recrie a venda se precisar mudar isso.'
-      });
-    }
+    const existingPaymentsTotal = existingPayments.reduce((acc, p) => acc + parseToCents(p.amount_paid), 0);
 
     const newInterestValCents = Math.round(newProductValCents * (parseFloat(interest_percent || 0) / 100));
     const newTotalValCents = newProductValCents + newInterestValCents;
@@ -304,11 +311,15 @@ router.put('/:id', async (req, res) => {
       );
     }
 
-    logSecurityEvent('SALE_UPDATED_REGENERATED', { ownerId, saleId, ip: req.ip });
+    const wipedPaymentsNote = existingPayments.length > 0
+      ? ` ATENÇÃO: ${existingPayments.length} pagamento(s) somando R$ ${centsToDecimalString(existingPaymentsTotal)} que estavam ligados às parcelas antigas desta venda foram removidos junto (parcelas foram recriadas do zero).`
+      : '';
+
+    logSecurityEvent('SALE_UPDATED_REGENERATED', { ownerId, saleId, wipedPaymentsCents: existingPaymentsTotal, ip: req.ip });
     await logAudit(req, 'VENDA_EDITADA', {
-      message: `Venda #${saleId} editada por ${req.user.name} (valor/data alterados — parcelas regeneradas).`,
+      message: `Venda #${saleId} editada por ${req.user.name} (valor/data alterados — parcelas regeneradas).${wipedPaymentsNote}`,
       saleId,
-      before: { productValue: existing.product_value, firstDueDate: existingFirstDueStr, totalValue: existing.total_value },
+      before: { productValue: existing.product_value, firstDueDate: existingFirstDueStr, totalValue: existing.total_value, payments: existingPayments },
       after: { productValue: productValDecimal, firstDueDate: first_due_date, totalValue: totalValDecimal }
     });
 

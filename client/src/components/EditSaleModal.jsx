@@ -113,7 +113,7 @@ export default function EditSaleModal({ isOpen, sale, onClose, onSuccess }) {
           )}
 
           <div className="p-3 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 rounded-xl text-amber-800 dark:text-amber-300 text-xs font-medium">
-            Quantidade de parcelas e modalidade não podem ser alteradas aqui. Se já houver algum pagamento registrado para esta venda, valor e datas também ficam bloqueados (nesse caso, exclua e registre uma nova venda).
+            Quantidade de parcelas e modalidade não podem ser alteradas aqui. Alterar valor ou datas recria as parcelas do zero — se já havia algum pagamento registrado nesta venda, ele será removido (fica registrado na Auditoria antes de apagar).
           </div>
 
           <div>
