@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ShieldCheck, Search, RefreshCw, UserCheck, Calendar, Activity, Lock, AlertCircle, Plus, Trash2, Users } from 'lucide-react';
 import api from '../services/api';
-import { formatDate } from '../utils/formatters';
+import { formatDate, formatDateTime } from '../utils/formatters';
 
 export default function AuditLogsPage({ user }) {
   const [logs, setLogs] = useState([]);
@@ -215,7 +215,7 @@ export default function AuditLogsPage({ user }) {
                   return (
                     <tr key={log.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors">
                       <td className="p-3.5 px-5 font-mono text-slate-600 dark:text-slate-300 whitespace-nowrap">
-                        {log.created_at ? log.created_at.replace('T', ' ').substring(0, 19) : '-'}
+                        {formatDateTime(log.created_at)}
                       </td>
                       <td className="p-3.5 font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1.5 whitespace-nowrap">
                         <UserCheck className="w-3.5 h-3.5 text-brand-blue" />

@@ -26,6 +26,30 @@ export function formatDate(dateStr) {
 }
 
 /**
+ * Formats a timestamp (date + time) to Brazil local time "DD/MM/YYYY HH:mm:ss".
+ * The server stores created_at in UTC with no timezone marker (Postgres is set
+ * to UTC), so a naive string like "2026-08-15 22:17:39" gets displayed raw and
+ * ends up 3h ahead of the user's actual local time. This forces UTC parsing
+ * (appending "Z" when the string carries no offset) before converting.
+ */
+export function formatDateTime(dateStr) {
+  if (!dateStr) return '-';
+  const isoStr = String(dateStr).trim().replace(' ', 'T');
+  const hasZone = /Z$|[+-]\d{2}:?\d{2}$/.test(isoStr);
+  const date = new Date(hasZone ? isoStr : `${isoStr}Z`);
+  if (isNaN(date.getTime())) return dateStr;
+  return date.toLocaleString('pt-BR', {
+    timeZone: 'America/Fortaleza',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  });
+}
+
+/**
  * Formats phone numbers (11988881111 -> (11) 98888-1111)
  */
 export function formatPhone(phone) {
