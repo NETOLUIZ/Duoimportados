@@ -118,6 +118,8 @@ export default function SalesPage({ onOpenNewSale }) {
 
   const totalFilteredValue = filteredSales.reduce((acc, curr) => acc + parseFloat(curr.total_value || 0), 0);
   const totalFilteredPaid = filteredSales.reduce((acc, curr) => acc + parseFloat(curr.total_paid || 0), 0);
+  const totalFilteredProduct = filteredSales.reduce((acc, curr) => acc + parseFloat(curr.product_value || 0), 0);
+  const totalFilteredInterest = filteredSales.reduce((acc, curr) => acc + parseFloat(curr.interest_value || 0), 0);
 
   return (
     <div className="p-4 sm:p-6 space-y-5 sm:space-y-6 w-full max-w-full">
@@ -386,7 +388,47 @@ export default function SalesPage({ onOpenNewSale }) {
                     );
                   })}
                 </tbody>
+                <tfoot>
+                  <tr className="bg-slate-50 dark:bg-slate-800/60 border-t-2 border-slate-300 dark:border-slate-700 text-sm font-black">
+                    <td className="p-4 px-6" colSpan={4}>
+                      <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Total ({filteredSales.length})</span>
+                    </td>
+                    <td className="p-4 text-right text-slate-800 dark:text-slate-100">
+                      {formatBRL(totalFilteredProduct)}
+                    </td>
+                    <td className="p-4 text-right text-amber-700 dark:text-amber-400">
+                      {formatBRL(totalFilteredInterest)}
+                    </td>
+                    <td className="p-4 text-right text-slate-800 dark:text-slate-100">
+                      {formatBRL(totalFilteredValue)}
+                    </td>
+                    <td className="p-4 text-right text-emerald-600 dark:text-emerald-400">
+                      {formatBRL(totalFilteredPaid)}
+                    </td>
+                    <td className="p-4 px-6"></td>
+                  </tr>
+                </tfoot>
               </table>
+            </div>
+
+            {/* Mobile summary totals */}
+            <div className="md:hidden p-4 bg-slate-50 dark:bg-slate-800/60 border-t-2 border-slate-300 dark:border-slate-700 grid grid-cols-2 gap-3">
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Total Emprestado</p>
+                <p className="text-sm font-black text-slate-800 dark:text-slate-100">{formatBRL(totalFilteredProduct)}</p>
+              </div>
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400">Total Juros</p>
+                <p className="text-sm font-black text-amber-700 dark:text-amber-400">{formatBRL(totalFilteredInterest)}</p>
+              </div>
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Total Bruto</p>
+                <p className="text-sm font-black text-slate-800 dark:text-slate-100">{formatBRL(totalFilteredValue)}</p>
+              </div>
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">Total Recebido</p>
+                <p className="text-sm font-black text-emerald-600 dark:text-emerald-400">{formatBRL(totalFilteredPaid)}</p>
+              </div>
             </div>
           </>
         )}

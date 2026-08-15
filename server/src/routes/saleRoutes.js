@@ -17,7 +17,12 @@ router.get('/', async (req, res) => {
     const ownerId = req.ownerId;
     const sales = await query(
       `SELECT s.*, c.name as customer_name, c.phone as customer_phone,
-        COALESCE(SUM(i.amount_paid), 0) as total_paid,
+        COALESCE(
+          (SELECT SUM(p.amount_paid) FROM payments p
+           JOIN installments i2 ON i2.id = p.installment_id
+           WHERE i2.sale_id = s.id AND p.owner_id = s.owner_id),
+          0
+        ) as total_paid,
         (s.total_value - COALESCE(SUM(i.amount_paid), 0)) as remaining_balance,
         COUNT(i.id) as total_installments,
         SUM(CASE WHEN i.status = 'PAGA' THEN 1 ELSE 0 END) as paid_installments
