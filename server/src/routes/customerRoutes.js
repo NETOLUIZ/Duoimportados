@@ -28,6 +28,9 @@ router.get('/', async (req, res) => {
         ) as total_debt,
         (SELECT COUNT(*) FROM sales s WHERE s.customer_id = c.id AND s.owner_id = c.owner_id) as total_sales,
         COALESCE(
+          (SELECT SUM(s.product_value) FROM sales s WHERE s.customer_id = c.id AND s.owner_id = c.owner_id), 0
+        ) as total_borrowed,
+        COALESCE(
           (SELECT COUNT(*) 
            FROM installments i 
            WHERE i.customer_id = c.id AND i.owner_id = c.owner_id AND i.status = 'ATRASADA'

@@ -137,6 +137,13 @@ export default function CustomersPage({ onOpenNewCustomer, onEditCustomer }) {
 
                     <div className="flex items-center justify-between text-sm pt-1">
                       <span className="text-slate-500 dark:text-slate-400">{c.total_sales || 0} venda(s)</span>
+                      <span className="text-slate-600 dark:text-slate-300 font-semibold">
+                        Emprestado: {formatBRL(c.total_borrowed)}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-slate-400 dark:text-slate-500 text-xs">Saldo devedor</span>
                       <span className={`font-black ${hasDebt ? (hasOverdue ? 'text-rose-600 dark:text-rose-400' : 'text-brand-blue') : 'text-emerald-600 dark:text-emerald-400'}`}>
                         {hasDebt ? formatBRL(c.total_debt) : 'Quitado'}
                       </span>
@@ -177,6 +184,7 @@ export default function CustomersPage({ onOpenNewCustomer, onEditCustomer }) {
                     <th className="p-4">Telefone / WhatsApp</th>
                     <th className="p-4">Localização</th>
                     <th className="p-4 text-center">Vendas</th>
+                    <th className="p-4 text-right">Valor Emprestado</th>
                     <th className="p-4 text-right">Saldo Devedor</th>
                     <th className="p-4 text-center">Situação</th>
                     <th className="p-4 text-right px-6">Ações</th>
@@ -212,6 +220,9 @@ export default function CustomersPage({ onOpenNewCustomer, onEditCustomer }) {
                         </td>
                         <td className="p-4 text-center font-bold text-slate-700 dark:text-slate-300">
                           {c.total_sales || 0}
+                        </td>
+                        <td className="p-4 text-right font-semibold text-slate-600 dark:text-slate-300">
+                          {formatBRL(c.total_borrowed)}
                         </td>
                         <td className="p-4 text-right font-black text-slate-800 dark:text-slate-100">
                           {hasDebt ? (
