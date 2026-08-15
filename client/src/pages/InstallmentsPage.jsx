@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { CreditCard, Search, Phone, CheckCircle, CalendarClock } from 'lucide-react';
 import api from '../services/api';
-import { formatBRL, formatDate, formatPhone, getFrequencyLabel } from '../utils/formatters';
+import { formatBRL, formatDate, formatPhone, getFrequencyLabel, getWhatsAppLink } from '../utils/formatters';
 import { InstallmentStatusBadge } from '../components/StatusBadge';
 
 const FILTERS = [
@@ -148,7 +148,7 @@ export default function InstallmentsPage({ onOpenPayment }) {
                     <div className="flex items-center gap-2 pt-1">
                       {inst.customer_phone && (
                         <a
-                          href={`https://wa.me/55${inst.customer_phone.replace(/\D/g, '')}`}
+                          href={getWhatsAppLink(inst.customer_phone)}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="flex-1 min-h-[40px] flex items-center justify-center gap-1.5 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 rounded-xl text-xs font-bold"
@@ -194,7 +194,7 @@ export default function InstallmentsPage({ onOpenPayment }) {
                           <div>{inst.customer_name}</div>
                           {inst.customer_phone && (
                             <a
-                              href={`https://wa.me/55${inst.customer_phone.replace(/\D/g, '')}`}
+                              href={getWhatsAppLink(inst.customer_phone)}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="text-xs text-emerald-600 dark:text-emerald-400 font-mono flex items-center gap-1 hover:underline mt-0.5"

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Users, Search, Plus, Phone, MapPin, Edit, Trash2, Eye, ShoppingCart, Clock, X, TrendingUp, PiggyBank, Wallet, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { formatBRL, formatDate, formatPhone } from '../utils/formatters';
+import { formatBRL, formatDate, formatPhone, getWhatsAppLink } from '../utils/formatters';
 import StatusBadge, { InstallmentStatusBadge } from '../components/StatusBadge';
 
 function CustomerSituationBadge({ hasOverdue, hasDebt }) {
@@ -126,7 +126,7 @@ export default function CustomersPage({ onOpenNewCustomer, onEditCustomer }) {
 
                     {c.phone && (
                       <a
-                        href={`https://wa.me/55${c.phone.replace(/\D/g, '')}`}
+                        href={getWhatsAppLink(c.phone)}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-emerald-600 dark:text-emerald-400 text-sm font-semibold flex items-center gap-1.5 w-fit"
@@ -203,7 +203,7 @@ export default function CustomersPage({ onOpenNewCustomer, onEditCustomer }) {
                         <td className="p-4 text-slate-600 dark:text-slate-300 font-mono">
                           {c.phone ? (
                             <a
-                              href={`https://wa.me/55${c.phone.replace(/\D/g, '')}`}
+                              href={getWhatsAppLink(c.phone)}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1 font-semibold"

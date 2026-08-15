@@ -40,6 +40,25 @@ export function formatPhone(phone) {
 }
 
 /**
+ * Builds a wa.me link that opens the chat with a specific number directly.
+ * Normalizes the stored phone first — if it was saved already including the
+ * "55" country code (or a leading trunk "0"), a naive "55" + digits prefix
+ * would produce an invalid/duplicated number and WhatsApp falls back to its
+ * home screen instead of opening that contact's chat.
+ */
+export function getWhatsAppLink(phone) {
+  if (!phone) return '';
+  let digits = String(phone).replace(/\D/g, '');
+  if (digits.length > 11 && digits.startsWith('0')) {
+    digits = digits.slice(1);
+  }
+  if (digits.length > 11 && digits.startsWith('55')) {
+    digits = digits.slice(2);
+  }
+  return `https://wa.me/55${digits}`;
+}
+
+/**
  * Payment Frequency Label Helper
  */
 export function getFrequencyLabel(mode) {

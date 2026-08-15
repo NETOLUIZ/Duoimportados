@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertTriangle, X, Phone, Calendar, ArrowRight } from 'lucide-react';
-import { formatBRL, formatDate } from '../utils/formatters';
+import { formatBRL, formatDate, getWhatsAppLink } from '../utils/formatters';
 
 const MAX_PREVIEW_ITEMS = 4;
 
@@ -75,7 +75,7 @@ export default function OverdueAlertModal({ isOpen, items, totalValue, onClose }
                   </span>
                   {item.customer_phone && (
                     <a
-                      href={`https://wa.me/55${item.customer_phone.replace(/\D/g, '')}`}
+                      href={getWhatsAppLink(item.customer_phone)}
                       target="_blank"
                       rel="noopener noreferrer"
                       onClick={(e) => e.stopPropagation()}

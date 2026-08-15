@@ -15,7 +15,7 @@ import {
   PartyPopper
 } from 'lucide-react';
 import api from '../services/api';
-import { formatBRL, formatDate } from '../utils/formatters';
+import { formatBRL, formatDate, getWhatsAppLink } from '../utils/formatters';
 
 const TABS = [
   { id: 'atrasados', label: 'Atrasados', icon: AlertCircle, activeClass: 'bg-rose-600 text-white shadow-md' },
@@ -201,7 +201,7 @@ export default function DashboardPage({ onOpenNewSale, onOpenPayment }) {
                         )}
                         {activeTab !== 'pagos' && item.customer_phone && (
                           <a
-                            href={`https://wa.me/55${item.customer_phone.replace(/\D/g, '')}`}
+                            href={getWhatsAppLink(item.customer_phone)}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-emerald-600 dark:text-emerald-400 hover:underline font-semibold flex items-center gap-1"
