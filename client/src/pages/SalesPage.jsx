@@ -1,10 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { ShoppingCart, Plus, Trash2, Eye, Edit, X } from 'lucide-react';
+import { ShoppingCart, Plus, Trash2, Eye, Edit, X, Search, CalendarClock } from 'lucide-react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { formatBRL, formatDate, getFrequencyLabel } from '../utils/formatters';
 import { InstallmentStatusBadge } from '../components/StatusBadge';
 import EditSaleModal from '../components/EditSaleModal';
+
+const STATUS_FILTERS = [
+  { id: '', label: 'Todas', activeClass: 'bg-navy-900 text-white shadow-sm' },
+  { id: 'PENDENTE', label: 'Em aberto', activeClass: 'bg-amber-500 text-white shadow-sm' },
+  { id: 'QUITADA', label: 'Quitadas', activeClass: 'bg-emerald-600 text-white shadow-sm' },
+];
+
+const MODE_FILTERS = [
+  { id: '', label: 'Todas' },
+  { id: 'DIARIA', label: 'Diária' },
+  { id: 'QUINZENAL', label: 'Quinzenal' },
+  { id: 'MENSAL', label: 'Mensal' },
+];
 
 export default function SalesPage({ onOpenNewSale }) {
   const { user } = useAuth();
@@ -12,6 +25,9 @@ export default function SalesPage({ onOpenNewSale }) {
   const [loading, setLoading] = useState(true);
   const [selectedSale, setSelectedSale] = useState(null);
   const [editingSale, setEditingSale] = useState(null);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [modeFilter, setModeFilter] = useState('');
 
   const fetchSales = async () => {
     try {
@@ -50,6 +66,22 @@ export default function SalesPage({ onOpenNewSale }) {
     }
   };
 
+  const filteredSales = sales.filter((s) => {
+    const matchesSearch = !search.trim() ||
+      s.product_name?.toLowerCase().includes(search.toLowerCase()) ||
+      s.customer_name?.toLowerCase().includes(search.toLowerCase()) ||
+      s.customer_phone?.includes(search);
+
+    const isFullyPaid = parseFloat(s.remaining_balance) <= 0;
+    const matchesStatus = !statusFilter ||
+      (statusFilter === 'QUITADA' && isFullyPaid) ||
+      (statusFilter === 'PENDENTE' && !isFullyPaid);
+
+    const matchesMode = !modeFilter || s.payment_mode === modeFilter;
+
+    return matchesSearch && matchesStatus && matchesMode;
+  });
+
   return (
     <div className="p-4 sm:p-6 space-y-5 sm:space-y-6 w-full max-w-full">
       {/* Header */}
@@ -70,21 +102,144 @@ export default function SalesPage({ onOpenNewSale }) {
         </button>
       </div>
 
+      {/* Filters & Search */}
+      <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+        {/* Search */}
+        <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-2.5 rounded-xl w-full md:w-80">
+          <Search className="w-4 h-4 text-slate-400 dark:text-slate-500 flex-shrink-0" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar por cliente ou produto..."
+            className="w-full bg-transparent text-sm text-slate-800 dark:text-slate-100 font-medium focus:outline-none"
+          />
+        </div>
+
+        {/* Filters */}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex bg-slate-100 dark:bg-slate-800 p-1.5 rounded-xl gap-1 border border-slate-200 dark:border-slate-700 overflow-x-auto">
+            {STATUS_FILTERS.map((f) => (
+              <button
+                key={f.id}
+                onClick={() => setStatusFilter(f.id)}
+                className={`px-3 py-1.5 min-h-[36px] rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
+                  statusFilter === f.id ? f.activeClass : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex bg-slate-100 dark:bg-slate-800 p-1.5 rounded-xl gap-1 border border-slate-200 dark:border-slate-700 overflow-x-auto">
+            {MODE_FILTERS.map((m) => (
+              <button
+                key={m.id}
+                onClick={() => setModeFilter(m.id)}
+                className={`px-3 py-1.5 min-h-[36px] rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
+                  modeFilter === m.id ? 'bg-brand-blue text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                {m.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
       {/* Sales List */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
         {loading ? (
           <div className="p-8 text-center text-slate-500 dark:text-slate-400 font-medium">Carregando registro de vendas...</div>
-        ) : sales.length === 0 ? (
+        ) : filteredSales.length === 0 ? (
           <div className="p-12 text-center text-slate-400 dark:text-slate-500 space-y-2">
             <ShoppingCart className="w-12 h-12 mx-auto text-slate-300 dark:text-slate-700" />
-            <p className="text-base font-bold text-slate-600 dark:text-slate-300">Nenhuma venda realizada ainda</p>
-            <p className="text-xs">Registre uma nova venda parcelada clicando no botão "NOVA VENDA".</p>
+            <p className="text-base font-bold text-slate-600 dark:text-slate-300">
+              {sales.length === 0 ? 'Nenhuma venda realizada ainda' : 'Nenhuma venda encontrada com os filtros selecionados'}
+            </p>
+            <p className="text-xs">
+              {sales.length === 0 ? 'Registre uma nova venda parcelada clicando no botão "NOVA VENDA".' : 'Tente buscar com outro termo ou alterar os filtros.'}
+            </p>
           </div>
         ) : (
           <>
             {/* Mobile card list */}
             <div className="md:hidden divide-y divide-slate-100 dark:divide-slate-800">
-              {sales.map((s) => {
+              {filteredSales.map((s) => {
+                const isFullyPaid = parseFloat(s.remaining_balance) <= 0;
+                return (
+                  <div key={s.id} className="p-4 space-y-2.5">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="font-bold text-slate-800 dark:text-slate-100 truncate">{s.product_name}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">{s.customer_name}</p>
+                      </div>
+                      <span className="text-xs font-mono text-slate-400 dark:text-slate-500 flex-shrink-0">{formatDate(s.sale_date)}</span>
+                    </div>
+
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="inline-block px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                        {s.installment_count}x {getFrequencyLabel(s.payment_mode)}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-sm pt-1">
+                      <div>
+                        <p className="text-xs text-slate-400 dark:text-slate-500">Total da Venda</p>
+                        <p className="font-black text-slate-800 dark:text-slate-100">{formatBRL(s.total_value)}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-slate-400 dark:text-slate-500">Recebido</p>
+                        <p className={`font-bold ${isFullyPaid ? 'text-emerald-600 dark:text-emerald-400' : 'text-brand-blue'}`}>{formatBRL(s.total_paid)}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 pt-1">
+                      <button
+                        onClick={() => handleViewSale(s.id)}
+                        className="flex-1 min-h-[40px] flex items-center justify-center gap-1.5 bg-blue-50 dark:bg-blue-500/10 text-brand-blue rounded-xl text-xs font-bold"
+                      >
+                        <Eye className="w-4 h-4" /> Ver Parcelas
+                      </button>
+                      <button
+                        onClick={() => setEditingSale(s)}
+                        aria-label={`Editar venda ${s.product_name}`}
+                        className="w-11 min-h-[40px] flex items-center justify-center bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteSale(s.id, s.product_name)}
+                        aria-label={`Excluir venda ${s.product_name}`}
+                        className="w-11 min-h-[40px] flex items-center justify-center bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 rounded-xl"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Desktop table */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 text-xs uppercase font-extrabold tracking-wider border-b border-slate-200 dark:border-slate-800">
+                    <th className="p-4 px-6">Data</th>
+                    <th className="p-4">Cliente</th>
+                    <th className="p-4">Produto</th>
+                    <th className="p-4 text-center">Modalidade</th>
+                    <th className="p-4 text-right">Valor Produto</th>
+                    <th className="p-4 text-right">Juros</th>
+                    <th className="p-4 text-right">Total Venda</th>
+                    <th className="p-4 text-right">Recebido</th>
+                    <th className="p-4 text-right px-6">Ações</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-sm font-medium">
+                  {filteredSales.map((s) => {
                 const isFullyPaid = parseFloat(s.remaining_balance) <= 0;
                 return (
                   <div key={s.id} className="p-4 space-y-2.5">
