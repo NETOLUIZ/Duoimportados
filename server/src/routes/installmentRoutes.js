@@ -94,7 +94,9 @@ router.get('/', async (req, res) => {
         }
       }
 
-      const lateFeeRate = parseFloat(inst.late_fee_percent_per_day || 1.0);
+      // "?? 0", not "|| 1.0" — a deliberately-set 0% (no late fee) is falsy
+      // and would otherwise get silently overridden back to 1%/day.
+      const lateFeeRate = parseFloat(inst.late_fee_percent_per_day ?? 0);
       const amountCents = parseToCents(inst.amount);
       const lateFeeCalc = calculateDailyLateFee(amountCents, inst.due_date, todayStr, lateFeeRate);
 
@@ -162,7 +164,7 @@ router.post('/:id/payment', async (req, res) => {
       const interestRate = parseFloat(installment.interest_percent || 0);
       const monthlyInterestCents = Math.round(principalShareCents * (interestRate / 100));
 
-      const lateFeeRate = parseFloat(installment.late_fee_percent_per_day || 1.0);
+      const lateFeeRate = parseFloat(installment.late_fee_percent_per_day ?? 0);
       const { daysLate, lateFeeCents } = calculateDailyLateFee(principalShareCents, installment.due_date, paymentDateStr, lateFeeRate);
 
       const interestCents = monthlyInterestCents + lateFeeCents;

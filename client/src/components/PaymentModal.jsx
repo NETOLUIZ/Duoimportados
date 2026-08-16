@@ -56,7 +56,9 @@ export default function PaymentModal({ isOpen, installment, onClose, onSuccess }
 
   // Dynamic Daily Late Fee Calculation based on Selected Payment Date
   const dueDateStr = installment.due_date ? String(installment.due_date).split('T')[0] : '';
-  const lateFeeRate = parseFloat(installment.late_fee_percent_per_day || 1.0);
+  // "?? 0", not "|| 1.0" — a deliberately-set 0% (no late fee) is falsy and
+  // would otherwise get silently overridden back to 1%/day.
+  const lateFeeRate = parseFloat(installment.late_fee_percent_per_day ?? 0);
 
   let daysLate = 0;
   let lateFeeAmount = 0;

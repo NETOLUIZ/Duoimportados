@@ -122,9 +122,9 @@ function calculateDueDate(startDate, installmentIndex, frequency) {
  * @param {number} installmentAmountCents 
  * @param {string} dueDateStr - YYYY-MM-DD
  * @param {string} currentDateStr - YYYY-MM-DD
- * @param {number} lateFeePercentPerDay - e.g. 1.0 = 1% per day
+ * @param {number} lateFeePercentPerDay - e.g. 1.0 = 1% per day (defaults to 0 = no late fee)
  */
-function calculateDailyLateFee(installmentAmountCents, dueDateStr, currentDateStr, lateFeePercentPerDay = 1.0) {
+function calculateDailyLateFee(installmentAmountCents, dueDateStr, currentDateStr, lateFeePercentPerDay = 0) {
   if (!dueDateStr || !currentDateStr) {
     return { daysLate: 0, lateFeeCents: 0, updatedTotalCents: installmentAmountCents };
   }

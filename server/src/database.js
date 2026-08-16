@@ -230,7 +230,7 @@ async function initDatabase() {
       payment_mode VARCHAR(50) NOT NULL,
       installment_count INT NOT NULL,
       first_due_date DATE NOT NULL,
-      late_fee_percent_per_day ${numericType} DEFAULT 1.00,
+      late_fee_percent_per_day ${numericType} DEFAULT 0.00,
       created_at TIMESTAMP DEFAULT ${timestampDefault},
       FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE CASCADE,
       FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE

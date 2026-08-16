@@ -33,7 +33,7 @@ const saleSchema = z.object({
   product_value: z.union([z.string(), z.number()]).transform(val => String(val)),
   interest_value: z.union([z.string(), z.number()]).optional().transform(val => val ? String(val) : '0'),
   interest_percent: z.number().nonnegative().optional().default(0),
-  late_fee_percent_per_day: z.number().nonnegative().optional().default(1.0),
+  late_fee_percent_per_day: z.number().nonnegative().optional().default(0),
   payment_mode: z.enum(['DIARIA', 'QUINZENAL', 'MENSAL']),
   installment_count: z.number().int().min(1, 'Quantidade de parcelas deve ser no mínimo 1').max(60),
   first_due_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Data de vencimento inválida (AAAA-MM-DD)'),
@@ -52,7 +52,7 @@ const saleEditSchema = z.object({
     .transform(val => (val && val.length > 0 ? val : 'Produto não especificado')),
   product_value: z.union([z.string(), z.number()]).transform(val => String(val)),
   interest_percent: z.number().nonnegative().optional().default(0),
-  late_fee_percent_per_day: z.number().nonnegative().optional().default(1.0),
+  late_fee_percent_per_day: z.number().nonnegative().optional().default(0),
   sale_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Data da venda inválida (AAAA-MM-DD)'),
   first_due_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Data de vencimento inválida (AAAA-MM-DD)'),
   mark_paid_amount: z.union([z.string(), z.number()]).optional().nullable()

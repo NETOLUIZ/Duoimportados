@@ -120,7 +120,9 @@ router.post('/', async (req, res) => {
     const totalValDecimal = centsToDecimalString(totalValCents);
 
     const saleDateStr = sale_date || new Date().toISOString().split('T')[0];
-    const lateFeeRateDecimal = parseFloat(late_fee_percent_per_day || 1.0).toFixed(2);
+    // "?? 0", not "|| 1.0" — 0 is a falsy number, so "0 || 1.0" would silently
+    // turn a deliberate "no late fee" (0%) back into 1%/day.
+    const lateFeeRateDecimal = parseFloat(late_fee_percent_per_day ?? 0).toFixed(2);
     const interestPercentDecimal = parseFloat(interest_percent || 0).toFixed(2);
 
     // Insert Sale Record
@@ -214,7 +216,7 @@ router.put('/:id', async (req, res) => {
 
     const { product_name, product_value, interest_percent, late_fee_percent_per_day, sale_date, first_due_date, mark_paid_amount } = parseResult.data;
     const interestPercentDecimal = parseFloat(interest_percent || 0).toFixed(2);
-    const lateFeeRateDecimal = parseFloat(late_fee_percent_per_day || 1.0).toFixed(2);
+    const lateFeeRateDecimal = parseFloat(late_fee_percent_per_day ?? 0).toFixed(2);
 
     const newProductValCents = parseToCents(product_value);
     if (newProductValCents <= 0) {

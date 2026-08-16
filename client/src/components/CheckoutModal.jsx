@@ -50,7 +50,7 @@ export default function CheckoutModal({ isOpen, onClose, onSuccess }) {
   const [productName, setProductName] = useState('');
   const [productValue, setProductValue] = useState('');
   const [interestPercent, setInterestPercent] = useState('0');
-  const [lateFeePercentPerDay, setLateFeePercentPerDay] = useState('1');
+  const [lateFeePercentPerDay, setLateFeePercentPerDay] = useState('0');
   const [paymentMode, setPaymentMode] = useState('MENSAL');
   const [installmentCount, setInstallmentCount] = useState('3');
   const [firstDueDate, setFirstDueDate] = useState('');
@@ -70,7 +70,7 @@ export default function CheckoutModal({ isOpen, onClose, onSuccess }) {
       setProductName('');
       setProductValue('');
       setInterestPercent('0');
-      setLateFeePercentPerDay('1');
+      setLateFeePercentPerDay('0');
       setPaymentMode('MENSAL');
       setInstallmentCount('3');
 
@@ -149,7 +149,11 @@ export default function CheckoutModal({ isOpen, onClose, onSuccess }) {
   // Real-time sale summary calculation
   const pVal = parseFloat(productValue) || 0;
   const iRate = parseFloat(interestPercent.replace(',', '.')) || 0;
-  const lFeeRate = parseFloat(lateFeePercentPerDay.replace(',', '.')) || 1.0;
+  // NOT "|| 0" — that would also override a deliberately-typed "0" back to
+  // the fallback, since the number 0 is falsy in JS. Only NaN (empty/invalid
+  // input) should fall back; an explicit 0 must stay 0 (no late fee at all).
+  const parsedLateFee = parseFloat(lateFeePercentPerDay.replace(',', '.'));
+  const lFeeRate = isNaN(parsedLateFee) ? 0 : parsedLateFee;
   const jVal = (pVal * iRate) / 100;
   const totalVal = pVal + jVal;
   const count = parseInt(installmentCount) || 1;
@@ -530,7 +534,7 @@ export default function CheckoutModal({ isOpen, onClose, onSuccess }) {
                         max="20"
                         value={lateFeePercentPerDay}
                         onChange={(e) => setLateFeePercentPerDay(e.target.value)}
-                        placeholder="1.0"
+                        placeholder="0"
                         className="w-full bg-slate-50 dark:bg-slate-800 border border-rose-300 dark:border-rose-500/40 text-rose-700 dark:text-rose-400 text-sm rounded-xl p-3 min-h-[44px] pr-10 font-bold focus:ring-2 focus:ring-rose-500 focus:bg-white dark:focus:bg-slate-900 focus:outline-none transition-colors"
                       />
                       <span className="absolute right-2 top-1/2 -translate-y-1/2 text-rose-500 dark:text-rose-400 font-extrabold text-[11px]">%/dia</span>

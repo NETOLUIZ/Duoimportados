@@ -11,7 +11,7 @@ export default function EditSaleModal({ isOpen, sale, onClose, onSuccess }) {
   const [productName, setProductName] = useState('');
   const [productValue, setProductValue] = useState('');
   const [interestPercent, setInterestPercent] = useState('0');
-  const [lateFeePercentPerDay, setLateFeePercentPerDay] = useState('1');
+  const [lateFeePercentPerDay, setLateFeePercentPerDay] = useState('0');
   const [saleDate, setSaleDate] = useState('');
   const [firstDueDate, setFirstDueDate] = useState('');
   const [markPaidAmount, setMarkPaidAmount] = useState('');
@@ -24,7 +24,7 @@ export default function EditSaleModal({ isOpen, sale, onClose, onSuccess }) {
       setProductName(sale.product_name || '');
       setProductValue(String(sale.product_value ?? ''));
       setInterestPercent(String(sale.interest_percent ?? '0'));
-      setLateFeePercentPerDay(String(sale.late_fee_percent_per_day ?? '1'));
+      setLateFeePercentPerDay(String(sale.late_fee_percent_per_day ?? '0'));
       setSaleDate((sale.sale_date || '').split('T')[0].split(' ')[0] || '');
       setFirstDueDate((sale.first_due_date || '').split('T')[0].split(' ')[0] || '');
       setMarkPaidAmount('');
