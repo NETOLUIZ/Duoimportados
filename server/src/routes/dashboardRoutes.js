@@ -108,7 +108,8 @@ router.get('/alerts', async (req, res) => {
 
     // 🔴 ATRASADOS
     const atrasados = await query(
-      `SELECT i.*, c.name as customer_name, c.phone as customer_phone, s.product_name
+      `SELECT i.*, c.name as customer_name, c.phone as customer_phone,
+        s.product_name, s.payment_mode, s.installment_count, s.late_fee_percent_per_day, s.interest_percent, s.product_value
        FROM installments i
        JOIN customers c ON c.id = i.customer_id
        JOIN sales s ON s.id = i.sale_id
@@ -119,7 +120,8 @@ router.get('/alerts', async (req, res) => {
 
     // 🟡 PRÓXIMOS DO VENCIMENTO (Vencem nos próximos 2 dias)
     const vencendo = await query(
-      `SELECT i.*, c.name as customer_name, c.phone as customer_phone, s.product_name
+      `SELECT i.*, c.name as customer_name, c.phone as customer_phone,
+        s.product_name, s.payment_mode, s.installment_count, s.late_fee_percent_per_day, s.interest_percent, s.product_value
        FROM installments i
        JOIN customers c ON c.id = i.customer_id
        JOIN sales s ON s.id = i.sale_id
@@ -130,7 +132,9 @@ router.get('/alerts', async (req, res) => {
 
     // 🟢 PAGOS (Últimos pagamentos)
     const recemPagos = await query(
-      `SELECT i.*, c.name as customer_name, c.phone as customer_phone, s.product_name, p.payment_date, p.amount_paid as last_amount_paid
+      `SELECT i.*, c.name as customer_name, c.phone as customer_phone,
+        s.product_name, s.payment_mode, s.installment_count, s.late_fee_percent_per_day, s.interest_percent, s.product_value,
+        p.payment_date, p.amount_paid as last_amount_paid
        FROM installments i
        JOIN customers c ON c.id = i.customer_id
        JOIN sales s ON s.id = i.sale_id
